@@ -1,7 +1,9 @@
 <Project>
   <PropertyGroup>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Ling.Interceptors.Generated</InterceptorsNamespaces>
-    <EmitCompilerGeneratedFiles Condition="'$(DesignTimeBuild)' != 'true' and '$(LingInterceptorsBuildPhase)' != 'final'">true</EmitCompilerGeneratedFiles>
+    <!-- Keep generated sources on disk in design-time builds so Visual Studio can show
+         them under Dependencies > Analyzers > Generated Files. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <LingInterceptorsAnalyzerPath>$(MSBuildThisFileDirectory)..\analyzers\dotnet\cs\Ling.Interceptors.dll</LingInterceptorsAnalyzerPath>
   </PropertyGroup>
   <ItemGroup>

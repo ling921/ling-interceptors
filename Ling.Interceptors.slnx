@@ -17,6 +17,7 @@
     <Project Path="src/Ling.Interceptors/Ling.Interceptors.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Ling.Interceptors.ExternalGenerator/Ling.Interceptors.ExternalGenerator.csproj" />
     <Project Path="tests/Ling.Interceptors.Tests/Ling.Interceptors.Tests.csproj" />
   </Folder>
 </Solution>
