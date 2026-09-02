@@ -10,7 +10,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Ling.Interceptors" Version="1.0.0" />
+    <PackageReference Include="Ling.Interceptors" Version="1.0.0-preview.1" />
     <ProjectReference Include="..\..\tests\Ling.Interceptors.ExternalGenerator\Ling.Interceptors.ExternalGenerator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
