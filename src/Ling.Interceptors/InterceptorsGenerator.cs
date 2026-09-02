@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -19,12 +20,12 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
     internal const int Explicit = 1;
     internal const int Compilation = 2;
     internal const int GeneratedCode = 4;
-    private static readonly Regex IdRegex = new Regex("^[A-Za-z][A-Za-z0-9_.-]*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly Regex MarkerRegex = new Regex(@"^/\\*\\s*intercept\\s*:\\s*([A-Za-z][A-Za-z0-9_.-]*)\\s*\\*/$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex IdRegex = new("^[A-Za-z][A-Za-z0-9_.-]*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkerRegex = new(@"^/\\*\\s*intercept\\s*:\\s*([A-Za-z][A-Za-z0-9_.-]*)\\s*\\*/$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterPostInitializationOutput(static post => post.AddSource("LingInterceptors.Attributes.g.cs", SourceText.From(AttributesSource, Encoding.UTF8)));
+        context.RegisterPostInitializationOutput(static post => post.AddSource("LingInterceptors.Attributes.g.cs", SourceText.From(AttributesSource.Replace(GeneratedCodeVersionToken, GeneratorVersion) + "\n", Encoding.UTF8)));
 
         var rules = context.SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) => node is MethodDeclarationSyntax { AttributeLists.Count: > 0 },
@@ -97,7 +98,7 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         }
 
         foreach (var pair in selected)
-            context.AddSource("Interceptor_" + StableHint(pair.Key.Handler) + ".g.cs", SourceText.From(GenerateAdapter(pair.Key, pair.Value), Encoding.UTF8));
+            context.AddSource("Interceptor_" + StableHint(pair.Key.Handler) + ".g.cs", SourceText.From(GenerateAdapter(compilation, pair.Key, pair.Value), Encoding.UTF8));
     }
 
     internal static ImmutableArray<Rule> ValidateRules(ImmutableArray<Rule> rules, Action<Diagnostic> report)
@@ -129,8 +130,7 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
             }
 
             var candidates = rule.TargetType.GetMembers(rule.TargetName).OfType<IMethodSymbol>()
-                .Where(static m => m.MethodKind == MethodKind.Ordinary)
-                .Where(m => HasCompatibleSignature(rule.Handler, m))
+                .Where(m => m.MethodKind == MethodKind.Ordinary && HasCompatibleSignature(rule.Handler, m))
                 .ToArray();
             if (candidates.Length != 1)
             {
@@ -143,9 +143,9 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         return builder.ToImmutable();
     }
 
-    private static bool IsAccessibleFromGeneratedAdapter(IMethodSymbol handler) =>
-        handler.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal &&
-        handler.ContainingType.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal;
+    private static bool IsAccessibleFromGeneratedAdapter(IMethodSymbol handler)
+        => handler.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal
+            && handler.ContainingType.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal;
 
     private static bool HasCompatibleSignature(IMethodSymbol handler, IMethodSymbol target)
     {
@@ -273,9 +273,7 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         var start = Math.Max(0, name.SpanStart - 128);
         var preceding = name.SyntaxTree.GetText().ToString(TextSpan.FromBounds(start, name.SpanStart));
         var adjacent = Regex.Match(preceding, @"/\*\s*intercept\s*:\s*([A-Za-z][A-Za-z0-9_.-]*)\s*\*/\s*$", RegexOptions.CultureInvariant);
-        if (adjacent.Success)
-            return adjacent.Groups[1].Value;
-        return null;
+        return adjacent.Success ? adjacent.Groups[1].Value : null;
     }
 
     private static bool IsGenerated(SyntaxTree tree, SyntaxNode node)
@@ -297,32 +295,65 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
     private static void Add(Dictionary<Rule, List<Invocation>> selected, Rule rule, Invocation invocation)
     {
         if (!selected.TryGetValue(rule, out var values))
-            selected.Add(rule, values = new List<Invocation>());
+            selected.Add(rule, values = []);
         values.Add(invocation);
     }
 
-    private static string GenerateAdapter(Rule rule, List<Invocation> locations)
+    private static string GenerateAdapter(Compilation compilation, Rule rule, List<Invocation> locations)
     {
         var target = rule.Target!;
         var genericParameters = GetAllTypeParameters(target).ToArray();
+        var sourceRoot = GetSourceRoot(compilation);
 
         var sb = new StringBuilder();
+        sb.AppendLine("// <auto-generated />");
+        sb.AppendLine("// This file was generated by Ling.Interceptors. Do not edit it manually.");
+        sb.AppendLine();
         sb.AppendLine("#nullable enable");
+        sb.AppendLine();
         sb.AppendLine("namespace System.Runtime.CompilerServices");
         sb.AppendLine("{");
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// Provides the compiler interception location metadata.");
+        sb.AppendLine("    /// </summary>");
         sb.AppendLine("    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]");
+        sb.Append("    [global::System.CodeDom.Compiler.GeneratedCode(\"Ling.Interceptors\", \"").Append(GeneratorVersion).AppendLine("\")]");
+        sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
         sb.AppendLine("    file sealed class InterceptsLocationAttribute : global::System.Attribute");
-        sb.AppendLine("    { public InterceptsLocationAttribute(int version, string data) { } }");
+        sb.AppendLine("    {");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Initializes interception location metadata.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        /// <param name=\"version\">The compiler interception metadata version.</param>");
+        sb.AppendLine("        /// <param name=\"data\">The encoded interception location.</param>");
+        sb.AppendLine("        public InterceptsLocationAttribute(int version, string data)");
+        sb.AppendLine("        {");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
         sb.AppendLine("}");
+        sb.AppendLine();
         sb.AppendLine("namespace Ling.Interceptors.Generated");
         sb.AppendLine("{");
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// Provides the generated interception adapter for the configured handler.");
+        sb.AppendLine("    /// </summary>");
+        sb.Append("    [global::System.CodeDom.Compiler.GeneratedCode(\"Ling.Interceptors\", \"").Append(GeneratorVersion).AppendLine("\")]");
+        sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
+        sb.AppendLine("    [global::System.Runtime.CompilerServices.CompilerGenerated]");
         sb.AppendLine("    file static class Interceptor");
         sb.AppendLine("    {");
-        foreach (var location in locations)
-            sb.Append("        ").AppendLine(location.Location.GetInterceptsLocationAttributeSyntax());
-
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Dispatches the intercepted call to the user-provided handler.");
+        sb.AppendLine("        /// </summary>");
         var genericList = genericParameters.Length == 0 ? string.Empty : "<" + string.Join(", ", genericParameters.Select(static p => p.Name)) + ">";
         var returnPrefix = target.ReturnsByRefReadonly ? "ref readonly " : target.ReturnsByRef ? "ref " : string.Empty;
+        AppendParameterDocumentation(sb, target);
+        foreach (var location in locations)
+        {
+            sb.Append("        ").Append(location.Location.GetInterceptsLocationAttributeSyntax());
+            sb.Append(" // ").AppendLine(FormatSourceLocation(location.DiagnosticLocation, sourceRoot));
+        }
         sb.Append("        internal static ").Append(returnPrefix).Append(TypeName(target.ReturnType)).Append(" __Intercept").Append(genericList).Append('(');
         var arguments = new List<string>();
         if (!target.IsStatic)
@@ -350,6 +381,7 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         else
             sb.Append("            return ").Append(handlerCall).AppendLine(";");
         sb.AppendLine("        }");
+        sb.AppendLine();
         sb.AppendLine("    }");
         sb.AppendLine("}");
         return sb.ToString();
@@ -361,10 +393,17 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         for (var current = target.ContainingType; current is not null; current = current.ContainingType)
             containers.Push(current);
         while (containers.Count != 0)
+        {
             foreach (var parameter in containers.Pop().TypeParameters)
+            {
                 yield return parameter;
+            }
+        }
+
         foreach (var parameter in target.TypeParameters)
+        {
             yield return parameter;
+        }
     }
 
     private static string HandlerCall(IMethodSymbol handler, IEnumerable<ITypeParameterSymbol> genericParameters, List<string> arguments)
@@ -390,6 +429,88 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
 
     private static string TypeName(ITypeSymbol symbol) => symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+    private static void AppendParameterDocumentation(StringBuilder sb, IMethodSymbol target)
+    {
+        if (!target.IsStatic)
+            sb.AppendLine("        /// <param name=\"receiver\">The instance on which the intercepted method was invoked.</param>");
+
+        for (var i = 0; i < target.Parameters.Length; i++)
+        {
+            var description = target.Parameters[i].RefKind == RefKind.Out
+                ? "The output value produced by the intercepted method."
+                : "The value passed to the intercepted method.";
+            sb.Append("        /// <param name=\"p").Append(i).Append("\">").Append(description).AppendLine("</param>");
+        }
+    }
+
+    private static string FormatSourceLocation(Location location, string? sourceRoot)
+    {
+        var lineSpan = location.GetLineSpan();
+        var sourcePath = string.IsNullOrEmpty(lineSpan.Path) ? location.SourceTree?.FilePath : lineSpan.Path;
+        var path = string.IsNullOrEmpty(sourcePath)
+            ? "unknown file"
+            : GetRelativePath(sourcePath!, sourceRoot);
+        var line = lineSpan.StartLinePosition.Line + 1;
+        var column = lineSpan.StartLinePosition.Character + 1;
+        return $"{path} ({line}, {column})".Replace("*/", "* /");
+    }
+
+    private static string? GetSourceRoot(Compilation compilation)
+    {
+        var directories = compilation.SyntaxTrees
+            .Select(static tree => tree.FilePath)
+            .Where(static path => !string.IsNullOrEmpty(path))
+            .Select(static path => Path.GetDirectoryName(Path.GetFullPath(path!)))
+            .Where(static path => !string.IsNullOrEmpty(path))
+            .Select(static path => path!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (directories.Length == 0)
+            return null;
+
+        var root = directories[0];
+        foreach (var directory in directories.Skip(1))
+        {
+            while (!IsSameOrDescendant(directory, root))
+            {
+                var parent = GetParentPath(root);
+                if (parent is null || string.Equals(parent, root, StringComparison.OrdinalIgnoreCase))
+                    return null;
+                root = parent;
+            }
+        }
+        return root;
+    }
+
+    private static string? GetParentPath(string path)
+    {
+        var separator = path.LastIndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+        return separator <= 0 ? null : path.Substring(0, separator);
+    }
+
+    private static string GetRelativePath(string path, string? sourceRoot)
+    {
+        if (sourceRoot is null)
+            return path.Replace('\\', '/');
+
+        var fullPath = Path.GetFullPath(path);
+        if (!IsSameOrDescendant(fullPath, sourceRoot))
+            return fullPath.Replace('\\', '/');
+
+        var relative = fullPath.Substring(sourceRoot.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return (relative.Length == 0 ? Path.GetFileName(fullPath) : relative).Replace('\\', '/');
+    }
+
+    private static bool IsSameOrDescendant(string path, string directory)
+    {
+        if (string.Equals(path, directory, StringComparison.OrdinalIgnoreCase))
+            return true;
+        var prefix = directory.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)
+            ? directory
+            : directory + Path.DirectorySeparatorChar;
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void AppendConstraints(StringBuilder sb, ITypeParameterSymbol parameter)
     {
         var parts = new List<string>();
@@ -414,24 +535,70 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
 
     private sealed class RuleComparer : IEqualityComparer<Rule>
     {
-        public static readonly RuleComparer Instance = new RuleComparer();
+        public static readonly RuleComparer Instance = new();
         public bool Equals(Rule? x, Rule? y) => x is not null && y is not null && SymbolEqualityComparer.Default.Equals(x.Handler, y.Handler);
         public int GetHashCode(Rule obj) => SymbolEqualityComparer.Default.GetHashCode(obj.Handler);
     }
 
-    private const string AttributesSource = @"// <auto-generated/>
+    private const string GeneratedCodeVersionToken = "__LING_INTERCEPTORS_VERSION__";
+
+    private static string GeneratorVersion =>
+        typeof(InterceptorsGenerator).Assembly.GetName().Version?.ToString() ?? "1.0.0.0";
+
+    private const string AttributesSource = """
+// <auto-generated />
+// This file was generated by Ling.Interceptors. Do not edit it manually.
+
 #nullable enable
+
 namespace Ling.Interceptors
 {
+    /// <summary>
+    /// Defines where an interceptor rule applies.
+    /// </summary>
     [global::System.Flags]
-    internal enum InterceptionScope { None = 0, Explicit = 1, Compilation = 2, GeneratedCode = 4 }
+    [global::System.CodeDom.Compiler.GeneratedCode("Ling.Interceptors", "__LING_INTERCEPTORS_VERSION__")]
+    internal enum InterceptionScope
+    {
+        /// <summary>
+        /// No interception scope.
+        /// </summary>
+        None = 0,
 
-    [global::System.Diagnostics.Conditional(""LING_INTERCEPTORS_PRESERVE_ATTRIBUTES"")]
+        /// <summary>
+        /// Only call sites with an explicit interception marker.
+        /// </summary>
+        Explicit = 1,
+
+        /// <summary>
+        /// Ordinary calls in the current compilation.
+        /// </summary>
+        Compilation = 2,
+
+        /// <summary>
+        /// Generated-code calls in the current compilation.
+        /// </summary>
+        GeneratedCode = 4,
+    }
+
+    /// <summary>
+    /// Marks a method as an interception handler.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
+    [global::System.CodeDom.Compiler.GeneratedCode("Ling.Interceptors", "__LING_INTERCEPTORS_VERSION__")]
+    [global::System.Diagnostics.Conditional("LING_INTERCEPTORS_PRESERVE_ATTRIBUTES")]
     internal sealed class InterceptAttribute : global::System.Attribute
     {
+        /// <summary>
+        /// Initializes an interception rule.
+        /// </summary>
+        /// <param name="id">The stable identifier of the rule.</param>
+        /// <param name="targetMethod">The target method name.</param>
+        /// <param name="scope">The scope in which the rule applies.</param>
         public InterceptAttribute(string id, string targetMethod, InterceptionScope scope)
-        { }
+        {
+        }
     }
-}";
+}
+""";
 }
