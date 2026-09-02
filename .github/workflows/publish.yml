@@ -19,7 +19,9 @@ jobs:
 
       - name: Test and pack
         run: |
-          dotnet test Ling.Interceptors.sln --configuration Release
+          dotnet restore src/Ling.Interceptors/Ling.Interceptors.csproj
+          dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --no-restore --output .artifacts/packages
+          dotnet test Ling.Interceptors.slnx --configuration Release
           dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --no-build --output artifacts/packages
 
       - name: NuGet login

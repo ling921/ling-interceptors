@@ -76,8 +76,8 @@ service.Send("two");                      // Compilation 替换
 
 ## 开发
 
-- 构建：`dotnet build Ling.Interceptors.sln`
-- 在 .NET 9 和 .NET 10 测试：`dotnet test Ling.Interceptors.sln`
+- 构建：`dotnet build Ling.Interceptors.slnx`
+- 在 .NET 9 和 .NET 10 测试：`dotnet test Ling.Interceptors.slnx`
 - 打包：`dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj -c Release`
 - 基础示例：`dotnet run --project samples/Ling.Interceptors.Sample`
 - 包与两阶段示例：`dotnet run --project samples/Ling.Interceptors.PackSample`

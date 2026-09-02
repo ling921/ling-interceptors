@@ -76,8 +76,8 @@ For `Compilation | GeneratedCode`, the package recognizes conventional generated
 
 ## Development
 
-- Build: `dotnet build Ling.Interceptors.sln`
-- Test .NET 9 and .NET 10: `dotnet test Ling.Interceptors.sln`
+- Build: `dotnet build Ling.Interceptors.slnx`
+- Test .NET 9 and .NET 10: `dotnet test Ling.Interceptors.slnx`
 - Pack: `dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj -c Release`
 - Basic sample: `dotnet run --project samples/Ling.Interceptors.Sample`
 - Package/two-phase sample: `dotnet run --project samples/Ling.Interceptors.PackSample`

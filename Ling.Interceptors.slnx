@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Ling.Interceptors.PackSample/Ling.Interceptors.PackSample.csproj" />
+    <Project Path="samples/Ling.Interceptors.Sample/Ling.Interceptors.Sample.csproj" />
+  </Folder>
+  <Folder Name="/Solution items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="global.json" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="README.zh-CN.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <File Path="src/Directory.Build.props" />
+    <Project Path="src/Ling.Interceptors/Ling.Interceptors.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ling.Interceptors.Tests/Ling.Interceptors.Tests.csproj" />
+  </Folder>
+</Solution>

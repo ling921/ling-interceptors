@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  test:
+    name: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -22,14 +23,17 @@ jobs:
 
       - uses: ./.github/actions/setup-dotnet
 
-      - name: Restore
-        run: dotnet restore Ling.Interceptors.sln
+      - name: Restore and pack the local package for the integration sample
+        run: |
+          dotnet restore src/Ling.Interceptors/Ling.Interceptors.csproj
+          dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --no-restore --output .artifacts/packages
+          dotnet restore Ling.Interceptors.slnx
 
       - name: Build
-        run: dotnet build Ling.Interceptors.sln --configuration Release --no-restore
+        run: dotnet build Ling.Interceptors.slnx --configuration Release --no-restore
 
       - name: Test .NET 9 and .NET 10
-        run: dotnet test Ling.Interceptors.sln --configuration Release --no-build --verbosity normal
+        run: dotnet test Ling.Interceptors.slnx --configuration Release --no-build --verbosity normal
 
       - name: Pack
         run: dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --no-build --output artifacts/packages
