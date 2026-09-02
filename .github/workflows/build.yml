@@ -51,6 +51,7 @@ jobs:
     if: github.event_name == 'release'
     needs: test
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
       id-token: write
