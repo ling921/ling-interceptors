@@ -1,5 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,12 +8,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DefaultItemExcludes>$(DefaultItemExcludes);LingInterceptors\**</DefaultItemExcludes>
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <PackageReference Include="Ling.Interceptors" Version="1.0.0-preview.2" />
-    <ProjectReference Include="..\..\tests\Ling.Interceptors.ExternalGenerator\Ling.Interceptors.ExternalGenerator.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <PackageReference Include="Ling.Interceptors" Version="1.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\tests\Ling.Interceptors.ExternalGenerator\Ling.Interceptors.ExternalGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>
