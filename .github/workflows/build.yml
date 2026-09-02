@@ -6,6 +6,8 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  release:
+    types: [published]
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -44,3 +46,28 @@ jobs:
           name: Ling.Interceptors-nupkg
           path: artifacts/packages/*.nupkg
           if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'release'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-dotnet
+
+      - name: Pack package
+        run: dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --output artifacts/packages
+
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ling921
+
+      - name: Publish package
+        run: dotnet nuget push artifacts/packages/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
