@@ -1,0 +1,31 @@
+# Build output
+**/[Bb]in/
+**/[Oo]bj/
+.artifacts/
+artifacts/
+LingInterceptors/
+TestResults/
+
+# Visual Studio and user files
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userprefs
+*.sln.docstates
+
+# Test and coverage output
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Tooling and local configuration
+*.log
+*.tmp
+*.cache
+.env
+_ReSharper*/
+*.DotSettings.user

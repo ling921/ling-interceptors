@@ -1,0 +1,38 @@
+<Project>
+  <!-- The first compilation materializes source-generator output. The generator emits a marker
+       only when a GeneratedCode rule exists.  The final nested Compile then sees external output. -->
+  <Target Name="LingInterceptorsPreparePass1" BeforeTargets="CoreCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(LingInterceptorsBuildPhase)' != 'final'">
+    <PropertyGroup>
+      <LingInterceptorsGeneratedRoot Condition="'$(LingInterceptorsGeneratedRoot)' == ''">$(IntermediateOutputPath)LingInterceptors\pass1</LingInterceptorsGeneratedRoot>
+      <CompilerGeneratedFilesOutputPath>$(LingInterceptorsGeneratedRoot)</CompilerGeneratedFilesOutputPath>
+    </PropertyGroup>
+    <RemoveDir Directories="$(LingInterceptorsGeneratedRoot)" Condition="Exists('$(LingInterceptorsGeneratedRoot)')" />
+    <MakeDir Directories="$(LingInterceptorsGeneratedRoot)" />
+  </Target>
+
+  <Target Name="LingInterceptorsCompileGeneratedSources" AfterTargets="CoreCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(LingInterceptorsBuildPhase)' != 'final'">
+    <ItemGroup>
+      <_LingInterceptorsMarkers Include="$(LingInterceptorsGeneratedRoot)\**\LingInterceptors.TwoPhaseRequired.g.cs" />
+      <_LingInterceptorsPass1Sources Include="$(LingInterceptorsGeneratedRoot)\**\*.cs"
+          Exclude="$(LingInterceptorsGeneratedRoot)\Ling.Interceptors\**\*" />
+    </ItemGroup>
+    <Error Code="LINGINTB001" Condition="'@(_LingInterceptorsMarkers)' != '' and '@(_LingInterceptorsPass1Sources)' == ''"
+           Text="Ling.Interceptors requested generated-code interception, but no external generator output could be materialized." />
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Compile" BuildInParallel="false"
+             Condition="'@(_LingInterceptorsMarkers)' != '' and '@(_LingInterceptorsPass1Sources)' != ''"
+             Properties="LingInterceptorsBuildPhase=final;LingInterceptorsGeneratedRoot=$(LingInterceptorsGeneratedRoot);BuildProjectReferences=false" />
+  </Target>
+
+  <Target Name="LingInterceptorsAddPass1Sources" BeforeTargets="CoreCompile"
+          Condition="'$(LingInterceptorsBuildPhase)' == 'final'">
+    <ItemGroup>
+      <Compile Include="$(LingInterceptorsGeneratedRoot)\**\*.cs"
+               Exclude="$(LingInterceptorsGeneratedRoot)\Ling.Interceptors\**\*" />
+      <!-- Phase one already ran third-party analyzers/generators. Keep only this package for final interception. -->
+      <Analyzer Remove="@(Analyzer)" />
+      <Analyzer Include="$(LingInterceptorsAnalyzerPath)" />
+    </ItemGroup>
+  </Target>
+</Project>

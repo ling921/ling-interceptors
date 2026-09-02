@@ -1,0 +1,196 @@
+using System.Collections.Immutable;
+using Ling.Interceptors;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Xunit;
+
+namespace Ling.Interceptors.Tests;
+
+public sealed class InterceptorsTests
+{
+    [Fact]
+    public void Generator_creates_adapters_for_explicit_and_compilation_rules()
+    {
+        const string source = GeneratorPreamble + """
+            internal sealed class Target { internal void Run(int value) { } }
+            internal static class Rules
+            {
+                [Intercept("default", nameof(Target.Run), InterceptionScope.Compilation)]
+                internal static void Default(Target target, int value) => target.Run(value);
+
+                [Intercept("special", nameof(Target.Run), InterceptionScope.Explicit)]
+                internal static void Special(Target target, int value) { }
+            }
+            internal static class Use
+            {
+                internal static void Go(Target target)
+                {
+                    target./* intercept:special */Run(1);
+                    target.Run(2);
+                }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        Assert.Contains(generated, text => text.Contains("Rules.Special", StringComparison.Ordinal));
+        Assert.Contains(generated, text => text.Contains("Rules.Default", StringComparison.Ordinal));
+        Assert.Equal(1, generated.Count(text => text.Contains("Rules.Special", StringComparison.Ordinal)));
+        Assert.Equal(1, generated.Count(text => text.Contains("Rules.Default", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Generator_emits_two_phase_marker_only_for_generated_code_scope()
+    {
+        const string withGeneratedCode = GeneratorPreamble + """
+            internal sealed class Target { internal void Run() { } }
+            internal static class Rules
+            {
+                [Intercept("all", nameof(Target.Run), InterceptionScope.Compilation | InterceptionScope.GeneratedCode)]
+                internal static void All(Target target) => target.Run();
+            }
+            """;
+        const string withoutGeneratedCode = GeneratorPreamble + """
+            internal sealed class Target { internal void Run() { } }
+            internal static class Rules
+            {
+                [Intercept("all", nameof(Target.Run), InterceptionScope.Compilation)]
+                internal static void All(Target target) => target.Run();
+            }
+            """;
+
+        Assert.Contains(RunGenerator(withGeneratedCode), text => text.Contains("two-phase build marker", StringComparison.Ordinal));
+        Assert.DoesNotContain(RunGenerator(withoutGeneratedCode), text => text.Contains("two-phase build marker", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("[Intercept(\"bad id\", nameof(Target.Run), InterceptionScope.Compilation)]", "LINGINT001")]
+    [InlineData("[Intercept(\"valid\", nameof(Target.Run), InterceptionScope.GeneratedCode)]", "LINGINT002")]
+    [InlineData("[Intercept(\"valid\", nameof(Run), InterceptionScope.Compilation)]", "LINGINT003")]
+    public async Task Analyzer_reports_invalid_rule_declarations(string attribute, string diagnosticId)
+    {
+        var source = Preamble + $$"""
+            internal sealed class Target { internal void Run() { } }
+            internal static class Rules
+            {
+                {{attribute}}
+                internal static void Replacement(Target target) => target.Run();
+            }
+            """;
+
+        var diagnostics = await RunAnalyzer(source);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == diagnosticId);
+    }
+
+    [Fact]
+    public async Task Analyzer_reports_duplicate_ids_and_incompatible_handlers()
+    {
+        const string source = Preamble + """
+            internal sealed class Target { internal void Run() { } }
+            internal sealed class Rules
+            {
+                [Intercept("same", nameof(Target.Run), InterceptionScope.Compilation)]
+                internal void One(Target target) { }
+
+                [Intercept("same", nameof(Target.Run), InterceptionScope.Compilation)]
+                internal static void Two(Target target) { }
+            }
+            """;
+
+        var diagnostics = await RunAnalyzer(source);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "LINGINT001");
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "LINGINT004");
+    }
+
+    [Theory]
+    [InlineData("missing", "[Intercept(\"known\", nameof(Target.Run), InterceptionScope.Explicit)]", "LINGINT006")]
+    [InlineData("known", "[Intercept(\"known\", nameof(Target.Run), InterceptionScope.Compilation)]", "LINGINT007")]
+    [InlineData("known", "[Intercept(\"known\", nameof(Target.Other), InterceptionScope.Explicit)]", "LINGINT008")]
+    public async Task Analyzer_validates_explicit_markers(string marker, string attribute, string diagnosticId)
+    {
+        var source = Preamble + $$"""
+            internal sealed class Target { internal void Run() { } internal void Other() { } }
+            internal static class Rules
+            {
+                {{attribute}}
+                internal static void Replacement(Target target) { }
+            }
+            internal static class Use
+            {
+                internal static void Go(Target target) => target./* intercept:{{marker}} */Run();
+            }
+            """;
+
+        var diagnostics = await RunAnalyzer(source);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == diagnosticId);
+    }
+
+    [Fact]
+    public async Task Analyzer_reports_compilation_rule_conflicts_but_not_handler_body_calls()
+    {
+        const string source = Preamble + """
+            internal sealed class Target { internal void Run() { } }
+            internal static class Rules
+            {
+                [Intercept("first", nameof(Target.Run), InterceptionScope.Compilation)]
+                internal static void First(Target target) => target.Run();
+
+                [Intercept("second", nameof(Target.Run), InterceptionScope.Compilation)]
+                internal static void Second(Target target) => target.Run();
+            }
+            internal static class Use { internal static void Go(Target target) => target.Run(); }
+            """;
+
+        var diagnostics = await RunAnalyzer(source);
+        Assert.Single(diagnostics.Where(diagnostic => diagnostic.Id == "LINGINT009"));
+    }
+
+    private static ImmutableArray<string> RunGenerator(string source)
+    {
+        var compilation = CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            new[] { new InterceptorsGenerator().AsSourceGenerator() },
+            parseOptions: (CSharpParseOptions)compilation.SyntaxTrees.Single().Options);
+        driver = driver.RunGenerators(compilation);
+        return driver.GetRunResult().Results.Single().GeneratedSources.Select(source => source.SourceText.ToString()).ToImmutableArray();
+    }
+
+    private static async Task<ImmutableArray<Diagnostic>> RunAnalyzer(string source)
+    {
+        var compilation = CreateCompilation(source);
+        var analyzers = ImmutableArray.Create<DiagnosticAnalyzer>(new InterceptorsAnalyzer());
+        return await compilation.WithAnalyzers(analyzers).GetAnalyzerDiagnosticsAsync();
+    }
+
+    private static CSharpCompilation CreateCompilation(string source)
+    {
+        var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
+        return CSharpCompilation.Create(
+            assemblyName: "Tests",
+            syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source, parseOptions) },
+            references: TrustedPlatformReferences.Value,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    private static readonly Lazy<ImmutableArray<MetadataReference>> TrustedPlatformReferences = new(() =>
+        ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? throw new InvalidOperationException("TPA is unavailable"))
+        .Split(Path.PathSeparator)
+        .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
+        .ToImmutableArray());
+
+    private const string Preamble = """
+        using System;
+        using Ling.Interceptors;
+        namespace Ling.Interceptors
+        {
+            [Flags] internal enum InterceptionScope { None = 0, Explicit = 1, Compilation = 2, GeneratedCode = 4 }
+            [AttributeUsage(AttributeTargets.Method)] internal sealed class InterceptAttribute : Attribute
+            {
+                public InterceptAttribute(string id, string targetMethod, InterceptionScope scope) { }
+            }
+        }
+        """;
+
+    private const string GeneratorPreamble = "using Ling.Interceptors;\n";
+}

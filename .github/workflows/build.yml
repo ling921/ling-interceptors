@@ -1,0 +1,42 @@
+name: Build and test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-dotnet
+
+      - name: Restore
+        run: dotnet restore Ling.Interceptors.sln
+
+      - name: Build
+        run: dotnet build Ling.Interceptors.sln --configuration Release --no-restore
+
+      - name: Test .NET 9 and .NET 10
+        run: dotnet test Ling.Interceptors.sln --configuration Release --no-build --verbosity normal
+
+      - name: Pack
+        run: dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --no-build --output artifacts/packages
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ling.Interceptors-nupkg
+          path: artifacts/packages/*.nupkg
+          if-no-files-found: error

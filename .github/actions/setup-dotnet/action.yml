@@ -1,0 +1,12 @@
+name: Setup .NET
+description: Installs the SDKs required to build and test Ling.Interceptors.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up .NET SDKs
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          9.0.x
+          10.0.x

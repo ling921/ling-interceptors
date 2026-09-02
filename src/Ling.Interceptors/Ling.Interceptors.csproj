@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageId>Ling.Interceptors</PackageId>
+    <Title>Ling.Interceptors</Title>
+    <Authors>Ling</Authors>
+    <Description>Compile-time C# method-call interception with Roslyn interceptors, explicit call-site selection, and generated-code support.</Description>
+    <PackageTags>interceptors;roslyn;source-generator;analyzer;compile-time;csharp</PackageTags>
+    <PackageProjectUrl>https://github.com/ling921/ling-interceptors</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ling921/ling-interceptors</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <NoWarn>$(NoWarn);RSEXPERIMENTAL002;RS2008;NU5128</NoWarn>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Package Content -->
+  <ItemGroup>
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="buildTransitive\Ling.Interceptors.props" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.props" />
+    <None Include="buildTransitive\Ling.Interceptors.targets" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.targets" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="README.zh-CN.md" Pack="true" PackagePath="" />
+    <None Include="..\..\assets\icon.png" Visible="false" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Ling.Interceptors.Generated</InterceptorsNamespaces>
+    <EmitCompilerGeneratedFiles Condition="'$(DesignTimeBuild)' != 'true' and '$(LingInterceptorsBuildPhase)' != 'final'">true</EmitCompilerGeneratedFiles>
+    <LingInterceptorsAnalyzerPath>$(MSBuildThisFileDirectory)..\analyzers\dotnet\cs\Ling.Interceptors.dll</LingInterceptorsAnalyzerPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="LingInterceptorsGeneratedRoot" />
+    <CompilerVisibleProperty Include="LingInterceptorsBuildPhase" />
+  </ItemGroup>
+</Project>
