@@ -1,6 +1,6 @@
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
-using System.Text;
 
 namespace Ling.Interceptors.ExternalGenerator;
 
