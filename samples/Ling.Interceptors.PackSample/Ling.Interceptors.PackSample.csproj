@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ling.Interceptors" Version="1.1.0-preview.3">
+    <PackageReference Include="Ling.Interceptors" Version="1.1.0-preview.4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>compile; runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

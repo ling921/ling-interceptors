@@ -29,7 +29,6 @@ jobs:
         run: |
           mkdir -p .artifacts/packages
           for project in \
-            src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj \
             src/Ling.Interceptors/Ling.Interceptors.csproj \
             src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj \
             src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj \
@@ -49,7 +48,6 @@ jobs:
         run: |
           mkdir -p artifacts/packages
           for project in \
-            src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj \
             src/Ling.Interceptors/Ling.Interceptors.csproj \
             src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj \
             src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj \
@@ -85,7 +83,6 @@ jobs:
         run: |
           mkdir -p artifacts/packages
           for project in \
-            src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj \
             src/Ling.Interceptors/Ling.Interceptors.csproj \
             src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj \
             src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj \

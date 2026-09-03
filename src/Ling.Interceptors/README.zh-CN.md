@@ -25,13 +25,15 @@ public async Task<Order> PlaceOrder(
 }
 ```
 
-generator 会查找当前 compilation 内的调用并自动生成 wrapper，记录选择的值、异常和耗时。应用需要显式配置 runtime sink：
+generator 会查找当前 compilation 内的调用并自动生成 wrapper，记录选择的值、异常和耗时。应用需要显式配置 sink：
 
 ```csharp
 MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 ```
 
-只声明受监控 API 的程序集只需要引用本包。包含受监控调用点的项目还必须引用 `Ling.Interceptors.Runtime`；否则内置分析器会报告 `LINGINT013`。
+默认 Formatter 会保留标量值、掩码敏感值，并将其他对象表示为声明类型摘要；不会调用 `ToString()` 或序列化复杂对象。需要结构化输出时可替换 `MonitorRuntime.Formatter`，其 `MonitorValueContext` 会标识敏感值。
+
+声明受监控 API 的程序集和包含受监控调用点的项目都需要引用本包。
 
 ## 声明替换方法
 

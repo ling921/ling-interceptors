@@ -20,7 +20,6 @@
     <File Path="src/Directory.Build.props" />
     <Project Path="src/Ling.Interceptors/Ling.Interceptors.csproj" />
     <Project Path="src/Ling.Interceptors.Generators/Ling.Interceptors.Generators.csproj" />
-    <Project Path="src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj" />
     <Project Path="src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj" />
     <Project Path="src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj" />
     <Project Path="src/Ling.Interceptors.OpenTelemetry/Ling.Interceptors.OpenTelemetry.csproj" />
@@ -31,7 +30,6 @@
     <Project Path="tests/Ling.Interceptors.Console.Tests/Ling.Interceptors.Console.Tests.csproj" />
     <Project Path="tests/Ling.Interceptors.Logging.Tests/Ling.Interceptors.Logging.Tests.csproj" />
     <Project Path="tests/Ling.Interceptors.OpenTelemetry.Tests/Ling.Interceptors.OpenTelemetry.Tests.csproj" />
-    <Project Path="tests/Ling.Interceptors.Runtime.Tests/Ling.Interceptors.Runtime.Tests.csproj" />
     <Project Path="tests/Ling.Interceptors.Tests/Ling.Interceptors.Tests.csproj" />
   </Folder>
 </Solution>

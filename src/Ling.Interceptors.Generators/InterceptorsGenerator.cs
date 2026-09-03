@@ -120,9 +120,6 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         foreach (var pair in selected)
             context.AddSource("Interceptor_" + StableHint(pair.Key.Handler) + ".g.cs", SourceText.From(GenerateAdapter(compilation, pair.Key, pair.Value), Encoding.UTF8));
 
-        if (selectedMonitors.Count > 0 && compilation.GetTypeByMetadataName("Ling.Interceptors.MonitorRuntime") is null)
-            return;
-
         foreach (var pair in selectedMonitors)
             context.AddSource("Monitor_" + StableHint(pair.Key.Target) + ".g.cs", SourceText.From(GenerateMonitorAdapter(compilation, pair.Key, pair.Value), Encoding.UTF8));
     }

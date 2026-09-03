@@ -290,44 +290,6 @@ public sealed class InterceptorsTests
         Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "LINGINT012");
     }
 
-    [Fact]
-    public async Task Analyzer_reports_missing_runtime_for_monitored_invocations()
-    {
-        const string source = Preamble + """
-            internal sealed class Target
-            {
-                [Monitor]
-                internal void Run() { }
-            }
-            internal static class Use
-            {
-                internal static void Go(Target target) => target.Run();
-            }
-            """;
-
-        var diagnostics = await RunAnalyzerWithoutRuntime(source);
-
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "LINGINT013");
-    }
-
-    [Fact]
-    public void Generator_does_not_emit_monitor_wrapper_without_runtime()
-    {
-        const string source = GeneratorPreamble + """
-            internal sealed class Target
-            {
-                [Monitor]
-                internal void Run() { }
-            }
-            internal static class Use
-            {
-                internal static void Go(Target target) => target.Run();
-            }
-            """;
-
-        Assert.DoesNotContain(RunGeneratorWithoutRuntime(source), text => text.Contains("__Monitor", StringComparison.Ordinal));
-    }
-
     private static ImmutableArray<string> RunGenerator(string source, params MetadataReference[] additionalReferences)
     {
         var compilation = CreateCompilation(source, additionalReferences);
@@ -345,13 +307,6 @@ public sealed class InterceptorsTests
         return await compilation.WithAnalyzers(analyzers).GetAnalyzerDiagnosticsAsync();
     }
 
-    private static async Task<ImmutableArray<Diagnostic>> RunAnalyzerWithoutRuntime(string source)
-    {
-        var compilation = CreateCompilationWithoutRuntime(source);
-        var analyzers = ImmutableArray.Create<DiagnosticAnalyzer>(new InterceptorsAnalyzer());
-        return await compilation.WithAnalyzers(analyzers).GetAnalyzerDiagnosticsAsync();
-    }
-
     private static CSharpCompilation CreateCompilation(string source, params MetadataReference[] additionalReferences)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
@@ -360,32 +315,8 @@ public sealed class InterceptorsTests
             syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source, parseOptions, path: Path.Combine("Project", "Program.cs")) },
             references: s_trustedPlatformReferences.Value
                 .Add(MetadataReference.CreateFromFile(typeof(MonitorAttribute).Assembly.Location))
-                .Add(MetadataReference.CreateFromFile(typeof(MonitorRuntime).Assembly.Location))
                 .AddRange(additionalReferences),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-    }
-
-    private static CSharpCompilation CreateCompilationWithoutRuntime(string source)
-    {
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Preview);
-        return CSharpCompilation.Create(
-            assemblyName: "Tests",
-            syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source, parseOptions, path: Path.Combine("Project", "Program.cs")) },
-            references: s_trustedPlatformReferences.Value
-                .Where(reference => !string.Equals(reference.Display, typeof(MonitorRuntime).Assembly.Location, StringComparison.OrdinalIgnoreCase))
-                .ToImmutableArray()
-                .Add(MetadataReference.CreateFromFile(typeof(MonitorAttribute).Assembly.Location)),
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-    }
-
-    private static ImmutableArray<string> RunGeneratorWithoutRuntime(string source)
-    {
-        var compilation = CreateCompilationWithoutRuntime(source);
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            new[] { new InterceptorsGenerator().AsSourceGenerator() },
-            parseOptions: (CSharpParseOptions)compilation.SyntaxTrees.Single().Options);
-        driver = driver.RunGenerators(compilation);
-        return driver.GetRunResult().Results.Single().GeneratedSources.Select(source => source.SourceText.ToString()).ToImmutableArray();
     }
 
     private static MetadataReference CreateReferenceAssembly(string source, string assemblyName)

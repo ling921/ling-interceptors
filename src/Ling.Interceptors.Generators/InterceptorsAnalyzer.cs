@@ -24,8 +24,7 @@ public sealed class InterceptorsAnalyzer : DiagnosticAnalyzer
             start.RegisterSyntaxNodeAction(analysis => AddRule(analysis, rules), SyntaxKind.MethodDeclaration);
             start.RegisterSyntaxNodeAction(analysis => AddMonitor(analysis, monitors), SyntaxKind.MethodDeclaration);
             start.RegisterSyntaxNodeAction(analysis => AddCall(analysis, calls), SyntaxKind.InvocationExpression);
-            var hasMonitoringRuntime = start.Compilation.GetTypeByMetadataName("Ling.Interceptors.MonitorRuntime") is not null;
-            start.RegisterCompilationEndAction(analysis => Analyze(rules.ToImmutableArray(), monitors.ToImmutableArray(), calls.ToImmutableArray(), hasMonitoringRuntime, analysis.ReportDiagnostic));
+            start.RegisterCompilationEndAction(analysis => Analyze(rules.ToImmutableArray(), monitors.ToImmutableArray(), calls.ToImmutableArray(), analysis.ReportDiagnostic));
         });
     }
 
@@ -50,7 +49,7 @@ public sealed class InterceptorsAnalyzer : DiagnosticAnalyzer
             monitors.Add(monitor);
     }
 
-    private static void Analyze(ImmutableArray<Rule> rules, ImmutableArray<MonitorRule> monitors, ImmutableArray<Invocation> calls, bool hasMonitoringRuntime, Action<Diagnostic> report)
+    private static void Analyze(ImmutableArray<Rule> rules, ImmutableArray<MonitorRule> monitors, ImmutableArray<Invocation> calls, Action<Diagnostic> report)
     {
         var valid = InterceptorsGenerator.ValidateRules(rules, report);
         foreach (var monitor in monitors)
@@ -88,8 +87,6 @@ public sealed class InterceptorsAnalyzer : DiagnosticAnalyzer
                 monitor = null;
             if (matching.Length == 1 && monitor is not null)
                 report(Diagnostic.Create(Diagnostics.ConflictingMonitorRule, call.DiagnosticLocation, call.Target.ToDisplayString()));
-            else if (monitor is not null && !hasMonitoringRuntime)
-                report(Diagnostic.Create(Diagnostics.MissingMonitoringRuntime, call.DiagnosticLocation, call.Target.ToDisplayString()));
         }
     }
 }

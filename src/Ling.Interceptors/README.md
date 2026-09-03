@@ -25,13 +25,15 @@ public async Task<Order> PlaceOrder(
 }
 ```
 
-The generator discovers calls in the current compilation and emits a wrapper that records the selected values, exceptions, and elapsed time. Configure a runtime sink explicitly:
+The generator discovers calls in the current compilation and emits a wrapper that records the selected values, exceptions, and elapsed time. Configure a sink explicitly:
 
 ```csharp
 MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 ```
 
-An assembly that only declares monitored APIs needs this package. A project that contains monitored call sites must also reference `Ling.Interceptors.Runtime`; otherwise the included analyzer reports `LINGINT013`.
+The default formatter preserves scalar values, masks sensitive values, and emits a declared-type summary for other objects without calling `ToString()` or serializing them. Replace `MonitorRuntime.Formatter` for custom structured output; its `MonitorValueContext` identifies sensitive values.
+
+Both an assembly that declares monitored APIs and a project that contains monitored call sites need this package.
 
 ## Define a replacement
 

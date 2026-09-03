@@ -1,6 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
 namespace Ling.Interceptors;
 
 /// <summary>
@@ -9,7 +6,7 @@ namespace Ling.Interceptors;
 public interface IMonitorValueFormatter
 {
     /// <summary>
-    /// Formats a value into a safe, structured representation.
+/// Formats a value into a safe representation. The context identifies sensitive values.
     /// </summary>
     MonitorValue Format(object? value, in MonitorValueContext context);
 }
@@ -20,12 +17,6 @@ public interface IMonitorValueFormatter
 public sealed class DefaultMonitorValueFormatter : IMonitorValueFormatter
 {
     private const int MaskVisibleCharacters = 2;
-    private readonly JsonSerializerOptions _options = new()
-    {
-        MaxDepth = 8,
-        ReferenceHandler = ReferenceHandler.IgnoreCycles,
-    };
-
     /// <summary>Gets the shared formatter instance.</summary>
     public static DefaultMonitorValueFormatter Instance { get; } = new DefaultMonitorValueFormatter();
 
@@ -37,21 +28,16 @@ public sealed class DefaultMonitorValueFormatter : IMonitorValueFormatter
             return new MonitorValue(value is string text ? Mask(text) : "[REDACTED]", true);
         }
 
-        if (value is null || value is string || value.GetType().IsPrimitive || value is decimal || value is DateTime || value is DateTimeOffset || value is TimeSpan || value is Guid || value.GetType().IsEnum)
+        if (value is null || value is string || IsScalar(value))
         {
             return new MonitorValue(value);
         }
 
-        try
-        {
-            using var document = JsonDocument.Parse(JsonSerializer.Serialize(value, value.GetType(), _options));
-            return new MonitorValue(document.RootElement.Clone());
-        }
-        catch
-        {
-            return new MonitorValue("<" + context.DeclaredType.FullName + ":unserializable>");
-        }
+        return new MonitorValue("<" + (context.DeclaredType.FullName ?? context.DeclaredType.Name) + ">");
     }
+
+    private static bool IsScalar(object value)
+        => value.GetType().IsPrimitive || value is decimal or DateTime or DateTimeOffset or TimeSpan or Guid || value.GetType().IsEnum;
 
     private static string Mask(string value)
     {

@@ -17,8 +17,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor InvalidMonitorScope = Create("LINGINT010", "Invalid monitor scope", "Monitor '{0}' must use Compilation and may optionally include GeneratedCode");
     public static readonly DiagnosticDescriptor ConflictingMonitorRule = Create("LINGINT011", "Conflicting monitor rule", "Monitor and interception rules both match invocation '{0}'");
     public static readonly DiagnosticDescriptor UnsupportedMonitorTarget = Create("LINGINT012", "Unsupported monitor target", "Monitor '{0}' cannot target a ref-return method");
-    public static readonly DiagnosticDescriptor MissingMonitoringRuntime = Create("LINGINT013", "Monitoring runtime is required", "Invocation '{0}' targets a monitored method; add a reference to Ling.Interceptors.Runtime");
-    public static readonly ImmutableArray<DiagnosticDescriptor> All = ImmutableArray.Create(InvalidId, InvalidScope, InvalidAttributeArguments, InvalidHandler, TargetResolutionFailed, UnknownMarker, MarkerNotExplicit, MarkerTargetMismatch, ConflictingCompilationRules, InvalidMonitorScope, ConflictingMonitorRule, UnsupportedMonitorTarget, MissingMonitoringRuntime);
+    public static readonly ImmutableArray<DiagnosticDescriptor> All = ImmutableArray.Create(InvalidId, InvalidScope, InvalidAttributeArguments, InvalidHandler, TargetResolutionFailed, UnknownMarker, MarkerNotExplicit, MarkerTargetMismatch, ConflictingCompilationRules, InvalidMonitorScope, ConflictingMonitorRule, UnsupportedMonitorTarget);
 
     private static DiagnosticDescriptor Create(string id, string title, string message)
         => new(id, title, message, "Ling.Interceptors", DiagnosticSeverity.Error, isEnabledByDefault: true);

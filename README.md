@@ -12,7 +12,6 @@ English | [简体中文](README.zh-CN.md)
 | Package | Purpose |
 | --- | --- |
 | [`Ling.Interceptors`](src/Ling.Interceptors/README.md) | Public interception and monitoring API, bundled analyzer, generator, and build integration. |
-| `Ling.Interceptors.Runtime` | Monitoring runtime contracts, value formatting, and no-op default sink. |
 | `Ling.Interceptors.Logging` | `Microsoft.Extensions.Logging` sink. |
 | `Ling.Interceptors.Console` | JSON Lines sink for standard error. |
 | `Ling.Interceptors.OpenTelemetry` | `ActivitySource` and `Meter` sink. |
@@ -27,11 +26,7 @@ The package automatically adds `Ling.Interceptors.Generated` to `InterceptorsNam
 
 ## Monitoring
 
-Add the runtime package to every compilation that invokes a monitored method. This is intentionally separate from `Ling.Interceptors`, so replacement-only projects do not depend on `System.Text.Json`.
-
-```shell
-dotnet add package Ling.Interceptors.Runtime
-```
+Monitoring runtime contracts, the no-op default sink, and the default value formatter are included in `Ling.Interceptors`; the main package has no `System.Text.Json` dependency.
 
 Mark the target method instead of writing a replacement. The generator finds calls in the current compilation and emits the wrapper automatically:
 
@@ -56,7 +51,9 @@ MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 // or: new OpenTelemetryMonitorSink()
 ```
 
-Calls in a referenced assembly are not rewritten. A project that calls a monitored method needs both `Ling.Interceptors` and `Ling.Interceptors.Runtime`; otherwise `LINGINT013` explains the missing runtime reference. A project that only declares monitored APIs needs only `Ling.Interceptors`.
+The default formatter preserves scalar values, masks sensitive values, and represents other objects as a declared-type summary without calling `ToString()` or serializing them. Set `MonitorRuntime.Formatter` to a custom formatter when structured values are required; `MonitorValueContext.IsSensitive` identifies values that must not be exposed.
+
+Calls in a referenced assembly are not rewritten. Both the declaring project and a project that calls a monitored method need `Ling.Interceptors`.
 
 ## Usage
 

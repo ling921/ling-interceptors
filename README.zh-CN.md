@@ -12,7 +12,6 @@
 | 包 | 用途 |
 | --- | --- |
 | [`Ling.Interceptors`](src/Ling.Interceptors/README.zh-CN.md) | 公开拦截和监控 API，以及内置分析器、源生成器与构建集成。 |
-| `Ling.Interceptors.Runtime` | 监控运行时契约、值格式化和默认空 sink。 |
 | `Ling.Interceptors.Logging` | `Microsoft.Extensions.Logging` sink。 |
 | `Ling.Interceptors.Console` | 输出 JSON Lines 到标准错误的 sink。 |
 | `Ling.Interceptors.OpenTelemetry` | `ActivitySource` 与 `Meter` sink。 |
@@ -27,11 +26,7 @@ dotnet add package Ling.Interceptors
 
 ## 方法监控
 
-每个调用受监控方法的 compilation 都需要额外安装 Runtime。它与 `Ling.Interceptors` 分包，因此仅使用方法替换的项目不会依赖 `System.Text.Json`。
-
-```shell
-dotnet add package Ling.Interceptors.Runtime
-```
+监控运行时契约、默认空 sink 与默认值格式化器均包含在 `Ling.Interceptors` 中；主包不依赖 `System.Text.Json`。
 
 在目标方法上标记即可，generator 会在当前 compilation 中寻找调用点并自动生成 wrapper：
 
@@ -56,7 +51,9 @@ MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 // 或：new OpenTelemetryMonitorSink()
 ```
 
-引用程序集内部已经编译好的调用点不会被修改。调用受监控方法的项目需要同时引用 `Ling.Interceptors` 和 `Ling.Interceptors.Runtime`；若遗漏 Runtime，会收到 `LINGINT013` 诊断。只声明受监控 API 的项目只需要引用 `Ling.Interceptors`。
+默认 Formatter 会保留标量值、掩码敏感值，并将其他对象表示为声明类型摘要；它不会调用 `ToString()` 或序列化复杂对象。需要结构化输出时可设置 `MonitorRuntime.Formatter` 为自定义 Formatter，`MonitorValueContext.IsSensitive` 用于标识不得泄露的值。
+
+引用程序集内部已经编译好的调用点不会被修改。声明受监控方法和调用受监控方法的项目都需要引用 `Ling.Interceptors`。
 
 ## 使用方式
 
