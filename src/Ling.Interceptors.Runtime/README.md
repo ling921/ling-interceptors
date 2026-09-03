@@ -17,4 +17,4 @@ public Task<Order> PlaceOrder(
 }
 ```
 
-Install this package alongside `Ling.Interceptors` in projects that invoke monitored methods. Assemblies that only declare monitored APIs need `Ling.Interceptors.Abstractions` instead.
+Install this package alongside `Ling.Interceptors` in projects that invoke monitored methods. Public monitoring attributes are supplied by the main package.

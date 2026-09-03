@@ -11,8 +11,7 @@ English | [简体中文](README.zh-CN.md)
 
 | Package | Purpose |
 | --- | --- |
-| [`Ling.Interceptors`](src/Ling.Interceptors/README.md) | Analyzer, generator, build integration, and method-replacement API. |
-| [`Ling.Interceptors.Abstractions`](src/Ling.Interceptors.Abstractions/README.md) | Zero-dependency public attributes and scopes. Pulled in automatically by the main package. |
+| [`Ling.Interceptors`](src/Ling.Interceptors/README.md) | Public interception and monitoring API, bundled analyzer, generator, and build integration. |
 | `Ling.Interceptors.Runtime` | Monitoring runtime contracts, value formatting, and no-op default sink. |
 | `Ling.Interceptors.Logging` | `Microsoft.Extensions.Logging` sink. |
 | `Ling.Interceptors.Console` | JSON Lines sink for standard error. |
@@ -57,7 +56,7 @@ MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 // or: new OpenTelemetryMonitorSink()
 ```
 
-Calls in a referenced assembly are not rewritten. A project that calls a monitored method needs both `Ling.Interceptors` and `Ling.Interceptors.Runtime`; otherwise `LINGINT013` explains the missing runtime reference. A project that only declares monitored APIs can reference `Ling.Interceptors.Abstractions`.
+Calls in a referenced assembly are not rewritten. A project that calls a monitored method needs both `Ling.Interceptors` and `Ling.Interceptors.Runtime`; otherwise `LINGINT013` explains the missing runtime reference. A project that only declares monitored APIs needs only `Ling.Interceptors`.
 
 ## Usage
 

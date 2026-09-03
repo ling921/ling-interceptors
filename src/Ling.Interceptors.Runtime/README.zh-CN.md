@@ -17,4 +17,4 @@ public Task<Order> PlaceOrder(
 }
 ```
 
-调用受监控方法的项目应将本包与 `Ling.Interceptors` 一起安装。仅声明受监控 API 的程序集应改为引用 `Ling.Interceptors.Abstractions`。
+调用受监控方法的项目应将本包与 `Ling.Interceptors` 一起安装；公开监控特性由主包提供。

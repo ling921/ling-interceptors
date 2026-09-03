@@ -2,7 +2,7 @@
 
 [项目文档](https://github.com/ling921/ling-interceptors#readme) | [English](https://github.com/ling921/ling-interceptors/blob/master/src/Ling.Interceptors/README.md)
 
-`Ling.Interceptors` 通过 Roslyn 分析器和增量源生成器实现 C# 方法调用的编译期拦截与监控，要求 .NET SDK 9.0.200 或更高版本。
+`Ling.Interceptors` 提供公开的拦截和监控 API，并内置 Roslyn 分析器和增量源生成器，要求 .NET SDK 9.0.200 或更高版本。
 
 ## 安装
 
@@ -31,7 +31,7 @@ generator 会查找当前 compilation 内的调用并自动生成 wrapper，记�
 MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 ```
 
-如果程序集只声明受监控 API，可只引用 `Ling.Interceptors.Runtime`。包含调用点的项目必须引用本包，以运行 generator。
+只声明受监控 API 的程序集只需要引用本包。包含受监控调用点的项目还必须引用 `Ling.Interceptors.Runtime`；否则内置分析器会报告 `LINGINT013`。
 
 ## 声明替换方法
 

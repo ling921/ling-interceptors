@@ -3,10 +3,6 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Ling.Interceptors</RootNamespace>
-    <IsRoslynComponent>true</IsRoslynComponent>
-    <AssemblyName>Ling.Interceptors.Generator</AssemblyName>
-    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>Ling.Interceptors</PackageId>
     <Title>Ling.Interceptors</Title>
     <Authors>Ling</Authors>
@@ -18,26 +14,19 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>icon.png</PackageIcon>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-    <IncludeSymbols>false</IncludeSymbols>
-    <NoWarn>$(NoWarn);RSEXPERIMENTAL002;RS2008;NU5128</NoWarn>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" PrivateAssets="all" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Ling.Interceptors.Abstractions\Ling.Interceptors.Abstractions.csproj" TreatAsPackageReference="true" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Ling.Interceptors.Generators\Ling.Interceptors.Generators.csproj"
+                      TreatAsPackageReference="false"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Package Content -->
   <ItemGroup>
-    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    <None Include="..\Ling.Interceptors.Abstractions\bin\$(Configuration)\netstandard2.0\Ling.Interceptors.Abstractions.dll" Pack="true" PackagePath="lib/netstandard2.0" Visible="false" />
+    <None Include="..\Ling.Interceptors.Generators\bin\$(Configuration)\netstandard2.0\Ling.Interceptors.Generators.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\Ling.Interceptors.Generators\bin\$(Configuration)\netstandard2.0\Ling.Interceptors.Generators.pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="buildTransitive\Ling.Interceptors.props" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.props" />
     <None Include="buildTransitive\Ling.Interceptors.targets" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.targets" />
     <None Include="README.md" Pack="true" PackagePath="" />

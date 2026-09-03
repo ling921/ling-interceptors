@@ -14,6 +14,7 @@
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\Ling.Interceptors.Runtime\Ling.Interceptors.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\Ling.Interceptors\Ling.Interceptors.csproj" />
     <ProjectReference Include="..\..\src\Ling.Interceptors.Console\Ling.Interceptors.Console.csproj" />
   </ItemGroup>
 

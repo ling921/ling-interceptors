@@ -2,7 +2,7 @@
 
 [Project documentation](https://github.com/ling921/ling-interceptors#readme) | [简体中文](https://github.com/ling921/ling-interceptors/blob/master/src/Ling.Interceptors/README.zh-CN.md)
 
-`Ling.Interceptors` provides compile-time C# method-call interception and monitoring through a Roslyn analyzer and incremental source generator. It requires .NET SDK 9.0.200 or later.
+`Ling.Interceptors` provides the public interception and monitoring API, plus bundled Roslyn analyzer and incremental source generator. It requires .NET SDK 9.0.200 or later.
 
 ## Installation
 
@@ -31,7 +31,7 @@ The generator discovers calls in the current compilation and emits a wrapper tha
 MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 ```
 
-Use `Ling.Interceptors.Runtime` when an assembly only declares monitored APIs. The project that contains call sites must reference this package so the generator can rewrite its compilation.
+An assembly that only declares monitored APIs needs this package. A project that contains monitored call sites must also reference `Ling.Interceptors.Runtime`; otherwise the included analyzer reports `LINGINT013`.
 
 ## Define a replacement
 
