@@ -3,9 +3,9 @@ name: Build and test
 on:
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [master, develop]
   pull_request:
-    branches: [master]
+    branches: [master, develop]
   release:
     types: [published]
 
@@ -25,10 +25,18 @@ jobs:
 
       - uses: ./.github/actions/setup-dotnet
 
-      - name: Restore and pack the local package for the integration sample
+      - name: Pack local packages for integration samples
         run: |
-          dotnet restore src/Ling.Interceptors/Ling.Interceptors.csproj
-          dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --no-restore --output .artifacts/packages
+          mkdir -p .artifacts/packages
+          for project in \
+            src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj \
+            src/Ling.Interceptors/Ling.Interceptors.csproj \
+            src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj \
+            src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj \
+            src/Ling.Interceptors.OpenTelemetry/Ling.Interceptors.OpenTelemetry.csproj
+          do
+            dotnet pack "$project" --configuration Release --output .artifacts/packages
+          done
           dotnet restore Ling.Interceptors.slnx
 
       - name: Build
@@ -38,13 +46,25 @@ jobs:
         run: dotnet test Ling.Interceptors.slnx --configuration Release --no-build --verbosity normal
 
       - name: Pack
-        run: dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --no-build --output artifacts/packages
+        run: |
+          mkdir -p artifacts/packages
+          for project in \
+            src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj \
+            src/Ling.Interceptors/Ling.Interceptors.csproj \
+            src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj \
+            src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj \
+            src/Ling.Interceptors.OpenTelemetry/Ling.Interceptors.OpenTelemetry.csproj
+          do
+            dotnet pack "$project" --configuration Release --no-build --output artifacts/packages
+          done
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
           name: Ling.Interceptors-nupkg
-          path: artifacts/packages/*.nupkg
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
           if-no-files-found: error
 
   publish:
@@ -61,8 +81,18 @@ jobs:
 
       - uses: ./.github/actions/setup-dotnet
 
-      - name: Pack package
-        run: dotnet pack src/Ling.Interceptors/Ling.Interceptors.csproj --configuration Release --output artifacts/packages
+      - name: Pack packages
+        run: |
+          mkdir -p artifacts/packages
+          for project in \
+            src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj \
+            src/Ling.Interceptors/Ling.Interceptors.csproj \
+            src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj \
+            src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj \
+            src/Ling.Interceptors.OpenTelemetry/Ling.Interceptors.OpenTelemetry.csproj
+          do
+            dotnet pack "$project" --configuration Release --output artifacts/packages
+          done
 
       - name: NuGet login
         uses: NuGet/login@v1
@@ -70,5 +100,7 @@ jobs:
         with:
           user: ling921
 
-      - name: Publish package
-        run: dotnet nuget push artifacts/packages/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Publish packages
+        run: |
+          dotnet nuget push artifacts/packages/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push artifacts/packages/*.snupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -1,5 +1,9 @@
 <Solution>
   <Folder Name="/samples/">
+    <Project Path="samples/Ling.Interceptors.CrossAssembly.Caller/Ling.Interceptors.CrossAssembly.Caller.csproj" />
+    <Project Path="samples/Ling.Interceptors.CrossAssembly.Target/Ling.Interceptors.CrossAssembly.Target.csproj" />
+    <Project Path="samples/Ling.Interceptors.LoggingSample/Ling.Interceptors.LoggingSample.csproj" />
+    <Project Path="samples/Ling.Interceptors.OpenTelemetrySample/Ling.Interceptors.OpenTelemetrySample.csproj" />
     <Project Path="samples/Ling.Interceptors.PackSample/Ling.Interceptors.PackSample.csproj" />
     <Project Path="samples/Ling.Interceptors.Sample/Ling.Interceptors.Sample.csproj" />
   </Folder>
@@ -15,9 +19,18 @@
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
     <Project Path="src/Ling.Interceptors/Ling.Interceptors.csproj" />
+    <Project Path="src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj" />
+    <Project Path="src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj" />
+    <Project Path="src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj" />
+    <Project Path="src/Ling.Interceptors.OpenTelemetry/Ling.Interceptors.OpenTelemetry.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Ling.Interceptors.ExternalGenerator/Ling.Interceptors.ExternalGenerator.csproj" />
+    <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/Ling.Interceptors.Console.Tests/Ling.Interceptors.Console.Tests.csproj" />
+    <Project Path="tests/Ling.Interceptors.Logging.Tests/Ling.Interceptors.Logging.Tests.csproj" />
+    <Project Path="tests/Ling.Interceptors.OpenTelemetry.Tests/Ling.Interceptors.OpenTelemetry.Tests.csproj" />
+    <Project Path="tests/Ling.Interceptors.Runtime.Tests/Ling.Interceptors.Runtime.Tests.csproj" />
     <Project Path="tests/Ling.Interceptors.Tests/Ling.Interceptors.Tests.csproj" />
   </Folder>
 </Solution>

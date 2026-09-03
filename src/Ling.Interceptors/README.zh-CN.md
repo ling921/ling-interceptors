@@ -2,7 +2,7 @@
 
 [项目文档](https://github.com/ling921/ling-interceptors#readme) | [English](https://github.com/ling921/ling-interceptors/blob/master/src/Ling.Interceptors/README.md)
 
-`Ling.Interceptors` 通过 Roslyn 分析器和增量源生成器实现 C# 方法调用的编译期拦截，要求 .NET SDK 9.0.200 或更高版本。
+`Ling.Interceptors` 通过 Roslyn 分析器和增量源生成器实现 C# 方法调用的编译期拦截与监控，要求 .NET SDK 9.0.200 或更高版本。
 
 ## 安装
 
@@ -11,6 +11,27 @@ dotnet add package Ling.Interceptors
 ```
 
 包会自动在 `InterceptorsNamespaces` 中配置 `Ling.Interceptors.Generated`。
+
+## 监控调用
+
+```csharp
+[Monitor(CaptureParameters = true, CaptureReturnValue = true)]
+[return: SensitiveData]
+public async Task<Order> PlaceOrder(
+    int customerId,
+    [SensitiveData] string product)
+{
+    // implementation
+}
+```
+
+generator 会查找当前 compilation 内的调用并自动生成 wrapper，记录选择的值、异常和耗时。应用需要显式配置 runtime sink：
+
+```csharp
+MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
+```
+
+如果程序集只声明受监控 API，可只引用 `Ling.Interceptors.Runtime`。包含调用点的项目必须引用本包，以运行 generator。
 
 ## 声明替换方法
 
@@ -42,7 +63,7 @@ service.Send("two");                      // Compilation 规则
 
 ## 诊断与限制
 
-随包提供的分析器会报告无效 ID/Scope、错误的 `nameof`、不可访问或不兼容的替换方法、歧义目标、无效标记和冲突的 compilation 规则。不支持构造函数、属性、运算符、委托调用和方法组转换。
+随包提供的分析器会报告无效 ID/Scope、错误的 `nameof`、不可访问或不兼容的替换方法、歧义目标、无效标记、冲突的 compilation 规则及 Monitor/拦截冲突。不支持构造函数、属性、运算符、委托调用和方法组转换。方法监控支持普通返回值、`Task`、`Task<T>`、`ValueTask` 和 `ValueTask<T>`。
 
 ## 协议
 

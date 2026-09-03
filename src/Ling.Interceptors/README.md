@@ -2,7 +2,7 @@
 
 [Project documentation](https://github.com/ling921/ling-interceptors#readme) | [简体中文](https://github.com/ling921/ling-interceptors/blob/master/src/Ling.Interceptors/README.zh-CN.md)
 
-`Ling.Interceptors` provides compile-time C# method-call interception through a Roslyn analyzer and incremental source generator. It requires .NET SDK 9.0.200 or later.
+`Ling.Interceptors` provides compile-time C# method-call interception and monitoring through a Roslyn analyzer and incremental source generator. It requires .NET SDK 9.0.200 or later.
 
 ## Installation
 
@@ -11,6 +11,27 @@ dotnet add package Ling.Interceptors
 ```
 
 The package automatically configures `Ling.Interceptors.Generated` in `InterceptorsNamespaces`.
+
+## Monitor calls
+
+```csharp
+[Monitor(CaptureParameters = true, CaptureReturnValue = true)]
+[return: SensitiveData]
+public async Task<Order> PlaceOrder(
+    int customerId,
+    [SensitiveData] string product)
+{
+    // implementation
+}
+```
+
+The generator discovers calls in the current compilation and emits a wrapper that records the selected values, exceptions, and elapsed time. Configure a runtime sink explicitly:
+
+```csharp
+MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
+```
+
+Use `Ling.Interceptors.Runtime` when an assembly only declares monitored APIs. The project that contains call sites must reference this package so the generator can rewrite its compilation.
 
 ## Define a replacement
 
@@ -42,7 +63,7 @@ service.Send("two");                      // Compilation rule
 
 ## Diagnostics and limits
 
-The included analyzer reports invalid IDs/scopes, malformed `nameof` expressions, inaccessible or incompatible replacements, ambiguous targets, invalid markers, and conflicting compilation rules. Constructors, properties, operators, delegate invocation, and method-group conversions are unsupported.
+The included analyzer reports invalid IDs/scopes, malformed `nameof` expressions, inaccessible or incompatible replacements, ambiguous targets, invalid markers, conflicting compilation rules, and Monitor/interceptor conflicts. Constructors, properties, operators, delegate invocation, and method-group conversions are unsupported. Monitor wrappers support ordinary returns, `Task`, `Task<T>`, `ValueTask`, and `ValueTask<T>`.
 
 ## License
 

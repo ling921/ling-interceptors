@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Ling.Interceptors</RootNamespace>
     <IsRoslynComponent>true</IsRoslynComponent>
+    <AssemblyName>Ling.Interceptors.Generator</AssemblyName>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>Ling.Interceptors</PackageId>
@@ -17,6 +19,7 @@
     <PackageIcon>icon.png</PackageIcon>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
     <DevelopmentDependency>true</DevelopmentDependency>
     <NoWarn>$(NoWarn);RSEXPERIMENTAL002;RS2008;NU5128</NoWarn>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -27,9 +30,14 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Ling.Interceptors.Runtime\Ling.Interceptors.Runtime.csproj" TreatAsPackageReference="true" />
+  </ItemGroup>
+
   <!-- Package Content -->
   <ItemGroup>
     <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="buildTransitive\Ling.Interceptors.props" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.props" />
     <None Include="buildTransitive\Ling.Interceptors.targets" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.targets" />
     <None Include="README.md" Pack="true" PackagePath="" />

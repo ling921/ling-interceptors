@@ -12,6 +12,8 @@ namespace Ling.Interceptors;
 public sealed class InterceptorsGenerator : IIncrementalGenerator
 {
     private const string AttributeMetadataName = "Ling.Interceptors.InterceptAttribute";
+    private const string MonitorAttributeMetadataName = "Ling.Interceptors.MonitorAttribute";
+    private const string SensitiveDataAttributeMetadataName = "Ling.Interceptors.SensitiveDataAttribute";
     internal const int Explicit = 1;
     internal const int Compilation = 2;
     internal const int GeneratedCode = 4;
@@ -20,11 +22,15 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterPostInitializationOutput(static post => post.AddSource("LingInterceptors.Attributes.g.cs", SourceText.From(AttributesSource.Replace(GeneratedCodeVersionToken, GeneratorVersion) + "\n", Encoding.UTF8)));
-
         var rules = context.SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) => node is MethodDeclarationSyntax { AttributeLists.Count: > 0 },
                 static (ctx, ct) => TryCreateRule(ctx, ct))
+            .Where(static x => x is not null)
+            .Select(static (x, _) => x!);
+
+        var monitors = context.SyntaxProvider.CreateSyntaxProvider(
+                static (node, _) => node is MethodDeclarationSyntax { AttributeLists.Count: > 0 },
+                static (ctx, ct) => TryCreateMonitorRule(ctx, ct))
             .Where(static x => x is not null)
             .Select(static (x, _) => x!);
 
@@ -34,23 +40,34 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
             .Where(static x => x is not null)
             .Select(static (x, _) => x!);
 
-        context.RegisterSourceOutput(context.CompilationProvider.Combine(rules.Collect()).Combine(calls.Collect()), Execute);
+        context.RegisterSourceOutput(
+            context.CompilationProvider
+                .Combine(rules.Collect())
+                .Combine(monitors.Collect())
+                .Combine(calls.Collect()),
+            Execute);
     }
 
-    private static void Execute(SourceProductionContext context, ((Compilation Left, ImmutableArray<Rule> Right) Left, ImmutableArray<Invocation> Right) data)
+    private static void Execute(
+        SourceProductionContext context,
+        (((Compilation Left, ImmutableArray<Rule> Right) Left, ImmutableArray<MonitorRule> Right) Left, ImmutableArray<Invocation> Right) data)
     {
-        var compilation = data.Left.Left;
-        var rules = data.Left.Right;
+        var compilation = data.Left.Left.Left;
+        var rules = data.Left.Left.Right;
+        var monitors = data.Left.Right;
         var calls = data.Right;
+        var validMonitors = monitors.Where(static monitor => IsValidMonitorScope(monitor.Scope)).ToImmutableArray();
 
         var validRules = ValidateRules(rules, static _ => { });
-        if (validRules.Length == 0)
+        if (validRules.Length == 0 && validMonitors.Length == 0 && !calls.Any(call => FindMonitorRule(call.Target, call.DiagnosticLocation, validMonitors) is not null))
             return;
 
-        if (validRules.Any(static r => (r.Scope & Compilation) != 0 && (r.Scope & GeneratedCode) != 0))
+        if (validRules.Any(static r => (r.Scope & Compilation) != 0 && (r.Scope & GeneratedCode) != 0)
+            || validMonitors.Any(static r => (r.Scope & Compilation) != 0 && (r.Scope & GeneratedCode) != 0))
             context.AddSource("LingInterceptors.TwoPhaseRequired.g.cs", SourceText.From("// Ling.Interceptors two-phase build marker\n", Encoding.UTF8));
 
         var selected = new Dictionary<Rule, List<Invocation>>(RuleComparer.Instance);
+        var selectedMonitors = new Dictionary<MonitorRule, List<Invocation>>(MonitorRuleComparer.Instance);
         foreach (var invocation in calls)
         {
             if (validRules.Any(r => SymbolEqualityComparer.Default.Equals(r.Handler, invocation.ContainingMethod)))
@@ -84,8 +101,16 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
                     (!invocation.IsGenerated || (r.Scope & GeneratedCode) != 0))
                 .ToArray();
 
-            if (matching.Length > 1)
+            var monitor = FindMonitorRule(invocation.Target, invocation.DiagnosticLocation, validMonitors);
+            if (monitor is not null && invocation.IsGenerated && (monitor.Scope & GeneratedCode) == 0)
+                monitor = null;
+            if (matching.Length > 1 || (matching.Length == 1 && monitor is not null))
             {
+                continue;
+            }
+            if (monitor is not null)
+            {
+                Add(selectedMonitors, monitor, invocation);
                 continue;
             }
             if (matching.Length == 1)
@@ -94,6 +119,9 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
 
         foreach (var pair in selected)
             context.AddSource("Interceptor_" + StableHint(pair.Key.Handler) + ".g.cs", SourceText.From(GenerateAdapter(compilation, pair.Key, pair.Value), Encoding.UTF8));
+
+        foreach (var pair in selectedMonitors)
+            context.AddSource("Monitor_" + StableHint(pair.Key.Target) + ".g.cs", SourceText.From(GenerateMonitorAdapter(compilation, pair.Key, pair.Value), Encoding.UTF8));
     }
 
     internal static ImmutableArray<Rule> ValidateRules(ImmutableArray<Rule> rules, Action<Diagnostic> report)
@@ -212,6 +240,81 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         return new Rule(id, targetType, targetName, scope, handler, null, syntax?.GetLocation() ?? method.GetLocation(), usesRequiredSyntax);
     }
 
+    private static MonitorRule? TryCreateMonitorRule(GeneratorSyntaxContext context, CancellationToken cancellationToken)
+    {
+        if (context.SemanticModel.GetDeclaredSymbol((MethodDeclarationSyntax)context.Node, cancellationToken) is not IMethodSymbol method)
+            return null;
+
+        return CreateMonitorRule(method, method.Locations.FirstOrDefault() ?? Location.None);
+    }
+
+    internal static MonitorRule? TryCreateMonitorRule(SemanticModel semanticModel, MethodDeclarationSyntax method, CancellationToken cancellationToken)
+    {
+        if (semanticModel.GetDeclaredSymbol(method, cancellationToken) is not IMethodSymbol symbol)
+            return null;
+
+        return CreateMonitorRule(symbol, method.GetLocation());
+    }
+
+    internal static MonitorRule? FindMonitorRule(IMethodSymbol method, Location location, ImmutableArray<MonitorRule> declaredRules)
+    {
+        if (method.ReturnsByRef || method.ReturnsByRefReadonly)
+            return null;
+
+        foreach (var rule in declaredRules)
+        {
+            if (SymbolEqualityComparer.Default.Equals(rule.Target.OriginalDefinition, method.OriginalDefinition))
+                return rule;
+        }
+
+        var discovered = CreateMonitorRule(method, location);
+        return discovered is not null && IsValidMonitorScope(discovered.Scope) ? discovered : null;
+    }
+
+    private static MonitorRule? CreateMonitorRule(IMethodSymbol method, Location location)
+    {
+        var attribute = method.GetAttributes().FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() == MonitorAttributeMetadataName);
+        if (attribute is null)
+            return null;
+
+        var scope = GetNamedInt(attribute, "Scope", Compilation);
+
+        return new MonitorRule(
+            method,
+            scope,
+            GetNamedBool(attribute, "CaptureParameters", false),
+            GetNamedBool(attribute, "CaptureReturnValue", false),
+            GetNamedBool(attribute, "CaptureExceptions", true),
+            GetNamedBool(attribute, "RecordTiming", true),
+            GetNamedBool(attribute, "CreateTrace", false),
+            location);
+    }
+
+    private static bool GetNamedBool(AttributeData attribute, string name, bool defaultValue)
+    {
+        foreach (var argument in attribute.NamedArguments)
+        {
+            if (argument.Key == name && argument.Value.Value is bool value)
+                return value;
+        }
+
+        return defaultValue;
+    }
+
+    private static int GetNamedInt(AttributeData attribute, string name, int defaultValue)
+    {
+        foreach (var argument in attribute.NamedArguments)
+        {
+            if (argument.Key == name && argument.Value.Value is int value)
+                return value;
+        }
+
+        return defaultValue;
+    }
+
+    internal static bool IsValidMonitorScope(int scope)
+        => (scope & ~(Compilation | GeneratedCode)) == 0 && (scope & Compilation) != 0;
+
     private static Invocation? TryCreateInvocation(GeneratorSyntaxContext context, CancellationToken cancellationToken)
     {
         var syntax = (InvocationExpressionSyntax)context.Node;
@@ -294,6 +397,13 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         values.Add(invocation);
     }
 
+    private static void Add(Dictionary<MonitorRule, List<Invocation>> selected, MonitorRule rule, Invocation invocation)
+    {
+        if (!selected.TryGetValue(rule, out var values))
+            selected.Add(rule, values = []);
+        values.Add(invocation);
+    }
+
     private static string GenerateAdapter(Compilation compilation, Rule rule, List<Invocation> locations)
     {
         var target = rule.Target!;
@@ -316,7 +426,6 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
         sb.AppendLine("    file sealed class InterceptsLocationAttribute : global::System.Attribute");
         sb.AppendLine("    {");
-        sb.AppendLine();
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Initializes interception location metadata.");
         sb.AppendLine("        /// </summary>");
@@ -380,6 +489,201 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         sb.AppendLine("    }");
         sb.AppendLine("}");
         return sb.ToString();
+    }
+
+    private static string GenerateMonitorAdapter(Compilation compilation, MonitorRule rule, List<Invocation> locations)
+    {
+        var target = rule.Target;
+        var genericParameters = GetAllTypeParameters(target).ToArray();
+        var sourceRoot = GetSourceRoot(compilation);
+        var category = target.ContainingType.ToDisplayString();
+        var methodName = target.Name;
+        var isTask = IsTaskLike(target.ReturnType, out var taskResultType, out var taskKind);
+        var sb = new StringBuilder();
+        sb.AppendLine("// <auto-generated />");
+        sb.AppendLine("// This file was generated by Ling.Interceptors. Do not edit it manually.");
+        sb.AppendLine();
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine();
+        AppendInterceptsLocationAttribute(sb);
+        sb.AppendLine();
+        sb.AppendLine("namespace Ling.Interceptors.Generated");
+        sb.AppendLine("{");
+        sb.AppendLine("    [global::System.CodeDom.Compiler.GeneratedCode(\"Ling.Interceptors\", \"" + GeneratorVersion + "\")]");
+        sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
+        sb.AppendLine("    [global::System.Runtime.CompilerServices.CompilerGenerated]");
+        sb.AppendLine("    file static class MonitorInterceptor");
+        sb.AppendLine("    {");
+        foreach (var location in locations)
+        {
+            sb.Append("        ").Append(location.Location.GetInterceptsLocationAttributeSyntax());
+            sb.Append(" // ").AppendLine(FormatSourceLocation(location.DiagnosticLocation, sourceRoot));
+        }
+
+        var returnPrefix = target.ReturnsByRefReadonly ? "ref readonly " : target.ReturnsByRef ? "ref " : string.Empty;
+        var asyncPrefix = isTask ? "async " : string.Empty;
+        var genericList = genericParameters.Length == 0 ? string.Empty : "<" + string.Join(", ", genericParameters.Select(static parameter => parameter.Name)) + ">";
+        sb.Append("        internal static ").Append(asyncPrefix).Append(returnPrefix).Append(TypeName(target.ReturnType)).Append(" __Monitor").Append(genericList).Append('(');
+        var arguments = new List<string>();
+        if (!target.IsStatic)
+        {
+            sb.Append("this ").Append(TypeName(target.ContainingType)).Append(" receiver");
+            arguments.Add("receiver");
+        }
+
+        for (var index = 0; index < target.Parameters.Length; index++)
+        {
+            if (arguments.Count > 0)
+                sb.Append(", ");
+            var parameter = target.Parameters[index];
+            sb.Append(ParameterDeclaration(parameter, "p" + index));
+            arguments.Add(Argument(parameter, "p" + index));
+        }
+
+        sb.AppendLine(")");
+        foreach (var parameter in genericParameters)
+            AppendConstraints(sb, parameter);
+        sb.AppendLine("        {");
+        sb.AppendLine("            var __parameters = new global::System.Collections.Generic.Dictionary<string, global::Ling.Interceptors.MonitorValue>();");
+        if (rule.CaptureParameters)
+        {
+            for (var index = 0; index < target.Parameters.Length; index++)
+            {
+                var parameter = target.Parameters[index];
+                var sensitive = HasSensitiveData(parameter.GetAttributes());
+                sb.Append("            __parameters.Add(\"").Append(EscapeString(parameter.Name)).Append("\", global::Ling.Interceptors.MonitorRuntime.Format(p").Append(index)
+                    .Append(", new global::Ling.Interceptors.MonitorValueContext(\"").Append(EscapeString(parameter.Name)).Append("\", typeof(").Append(TypeName(parameter.Type)).Append("), ").Append(sensitive ? "true" : "false").AppendLine("))); ");
+            }
+        }
+
+        sb.Append("            var __operation = global::Ling.Interceptors.MonitorRuntime.Begin(new global::Ling.Interceptors.MonitorStartContext(\"").Append(EscapeString(category)).Append("\", \"").Append(EscapeString(methodName)).Append("\", __parameters, ").Append(rule.CreateTrace ? "true" : "false").AppendLine("));");
+        sb.AppendLine("            var __stopwatch = global::System.Diagnostics.Stopwatch.StartNew();");
+        sb.AppendLine("            try");
+        sb.AppendLine("            {");
+        var call = TargetCall(target, arguments);
+        if (target.ReturnsVoid)
+        {
+            sb.Append("                ").Append(call).AppendLine(";");
+            AppendCompletion(sb, rule, category, methodName, "null");
+        }
+        else if (isTask)
+        {
+            if (taskKind == TaskKind.TaskWithoutResult || taskKind == TaskKind.ValueTaskWithoutResult)
+            {
+                sb.Append("                await ").Append(call).AppendLine(".ConfigureAwait(false);");
+                AppendCompletion(sb, rule, category, methodName, "null");
+            }
+            else
+            {
+                sb.Append("                var __result = await ").Append(call).AppendLine(".ConfigureAwait(false);");
+                var sensitive = HasSensitiveData(target.GetReturnTypeAttributes());
+                var returnValue = rule.CaptureReturnValue
+                    ? "global::Ling.Interceptors.MonitorRuntime.Format(__result, new global::Ling.Interceptors.MonitorValueContext(\"return\", typeof(" + TypeName(taskResultType!) + "), " + (sensitive ? "true" : "false") + "))"
+                    : "null";
+                AppendCompletion(sb, rule, category, methodName, returnValue);
+                sb.AppendLine("                return __result;");
+            }
+        }
+        else
+        {
+            sb.Append("                var __result = ").Append(call).AppendLine(";");
+            var sensitive = HasSensitiveData(target.GetReturnTypeAttributes());
+            var returnValue = rule.CaptureReturnValue
+                ? "global::Ling.Interceptors.MonitorRuntime.Format(__result, new global::Ling.Interceptors.MonitorValueContext(\"return\", typeof(" + TypeName(target.ReturnType) + "), " + (sensitive ? "true" : "false") + "))"
+                : "null";
+            AppendCompletion(sb, rule, category, methodName, returnValue);
+            sb.AppendLine("                return __result;");
+        }
+        sb.AppendLine("            }");
+        sb.AppendLine("            catch (global::System.Exception __exception)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                __stopwatch.Stop();");
+        if (rule.CaptureExceptions)
+        {
+            sb.Append("                __operation.Fail(new global::Ling.Interceptors.MonitorCompletionContext(\"").Append(EscapeString(category)).Append("\", \"").Append(EscapeString(methodName)).Append("\", __stopwatch.Elapsed, ").Append(rule.RecordTiming ? "true" : "false").AppendLine("), __exception);");
+        }
+        sb.AppendLine("                throw;");
+        sb.AppendLine("            }");
+        sb.AppendLine("            finally");
+        sb.AppendLine("            {");
+        sb.AppendLine("                __operation.Dispose();");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+        return sb.ToString();
+    }
+
+    private static void AppendCompletion(StringBuilder sb, MonitorRule rule, string category, string methodName, string returnValue)
+    {
+        sb.AppendLine("                __stopwatch.Stop();");
+        sb.Append("                __operation.Complete(new global::Ling.Interceptors.MonitorCompletionContext(\"").Append(EscapeString(category)).Append("\", \"").Append(EscapeString(methodName)).Append("\", __stopwatch.Elapsed, ").Append(rule.RecordTiming ? "true" : "false").Append("), ").Append(returnValue).AppendLine(");");
+    }
+
+    private static void AppendInterceptsLocationAttribute(StringBuilder sb)
+    {
+        sb.AppendLine("namespace System.Runtime.CompilerServices");
+        sb.AppendLine("{");
+        sb.AppendLine("    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]");
+        sb.AppendLine("    file sealed class InterceptsLocationAttribute : global::System.Attribute");
+        sb.AppendLine("    {");
+        sb.AppendLine("        public InterceptsLocationAttribute(int version, string data) { }");
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+    }
+
+    private static string TargetCall(IMethodSymbol target, List<string> arguments)
+    {
+        var values = target.IsStatic ? arguments : arguments.Skip(1).ToList();
+        var generic = target.Arity == 0 ? string.Empty : "<" + string.Join(", ", target.TypeParameters.Select(static parameter => parameter.Name)) + ">";
+        var receiver = target.IsStatic ? TypeName(target.ContainingType) : "receiver";
+        return receiver + "." + target.Name + generic + "(" + string.Join(", ", values) + ")";
+    }
+
+    private static bool HasSensitiveData(ImmutableArray<AttributeData> attributes)
+        => attributes.Any(static attribute => attribute.AttributeClass?.ToDisplayString() == SensitiveDataAttributeMetadataName);
+
+    private static string EscapeString(string value) => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+    private enum TaskKind
+    {
+        TaskWithoutResult,
+        TaskWithResult,
+        ValueTaskWithoutResult,
+        ValueTaskWithResult,
+    }
+
+    private static bool IsTaskLike(ITypeSymbol type, out ITypeSymbol? resultType, out TaskKind taskKind)
+    {
+        var display = type.OriginalDefinition.ToDisplayString();
+        if (display == "System.Threading.Tasks.Task")
+        {
+            resultType = null;
+            taskKind = TaskKind.TaskWithoutResult;
+            return true;
+        }
+        if (display == "System.Threading.Tasks.Task<TResult>")
+        {
+            resultType = ((INamedTypeSymbol)type).TypeArguments[0];
+            taskKind = TaskKind.TaskWithResult;
+            return true;
+        }
+        if (display == "System.Threading.Tasks.ValueTask")
+        {
+            resultType = null;
+            taskKind = TaskKind.ValueTaskWithoutResult;
+            return true;
+        }
+        if (display == "System.Threading.Tasks.ValueTask<TResult>")
+        {
+            resultType = ((INamedTypeSymbol)type).TypeArguments[0];
+            taskKind = TaskKind.ValueTaskWithResult;
+            return true;
+        }
+
+        resultType = null;
+        taskKind = default;
+        return false;
     }
 
     private static IEnumerable<ITypeParameterSymbol> GetAllTypeParameters(IMethodSymbol target)
@@ -479,7 +783,7 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
 
     private static string? GetParentPath(string path)
     {
-        var separator = path.LastIndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+        var separator = path.LastIndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
         return separator <= 0 ? null : path.Substring(0, separator);
     }
 
@@ -535,65 +839,16 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         public int GetHashCode(Rule obj) => SymbolEqualityComparer.Default.GetHashCode(obj.Handler);
     }
 
-    private const string GeneratedCodeVersionToken = "__LING_INTERCEPTORS_VERSION__";
-
-    private static string GeneratorVersion =>
-        typeof(InterceptorsGenerator).Assembly.GetName().Version?.ToString() ?? "1.0.0.0";
-
-    private const string AttributesSource = """
-// <auto-generated />
-// This file was generated by Ling.Interceptors. Do not edit it manually.
-
-#nullable enable
-
-namespace Ling.Interceptors
-{
-    /// <summary>
-    /// Defines where an interceptor rule applies.
-    /// </summary>
-    [global::System.Flags]
-    [global::System.CodeDom.Compiler.GeneratedCode("Ling.Interceptors", "__LING_INTERCEPTORS_VERSION__")]
-    internal enum InterceptionScope
+    private sealed class MonitorRuleComparer : IEqualityComparer<MonitorRule>
     {
-        /// <summary>
-        /// No interception scope.
-        /// </summary>
-        None = 0,
+        public static readonly MonitorRuleComparer Instance = new();
 
-        /// <summary>
-        /// Only call sites with an explicit interception marker.
-        /// </summary>
-        Explicit = 1,
+        public bool Equals(MonitorRule? x, MonitorRule? y)
+            => x is not null && y is not null && SymbolEqualityComparer.Default.Equals(x.Target, y.Target);
 
-        /// <summary>
-        /// Ordinary calls in the current compilation.
-        /// </summary>
-        Compilation = 2,
-
-        /// <summary>
-        /// Generated-code calls in the current compilation.
-        /// </summary>
-        GeneratedCode = 4,
+        public int GetHashCode(MonitorRule obj) => SymbolEqualityComparer.Default.GetHashCode(obj.Target);
     }
 
-    /// <summary>
-    /// Marks a method as an interception handler.
-    /// </summary>
-    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
-    [global::System.CodeDom.Compiler.GeneratedCode("Ling.Interceptors", "__LING_INTERCEPTORS_VERSION__")]
-    [global::System.Diagnostics.Conditional("LING_INTERCEPTORS_PRESERVE_ATTRIBUTES")]
-    internal sealed class InterceptAttribute : global::System.Attribute
-    {
-        /// <summary>
-        /// Initializes an interception rule.
-        /// </summary>
-        /// <param name="id">The stable identifier of the rule.</param>
-        /// <param name="targetMethod">The target method name.</param>
-        /// <param name="scope">The scope in which the rule applies.</param>
-        public InterceptAttribute(string id, string targetMethod, InterceptionScope scope)
-        {
-        }
-    }
-}
-""";
+    private static string GeneratorVersion
+        => typeof(InterceptorsGenerator).Assembly.GetName().Version?.ToString() ?? "1.1.0.0";
 }

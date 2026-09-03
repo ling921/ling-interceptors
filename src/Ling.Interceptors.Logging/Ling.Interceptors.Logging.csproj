@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Ling.Interceptors</RootNamespace>
+    <PackageId>Ling.Interceptors.Logging</PackageId>
+    <Title>Ling.Interceptors.Logging</Title>
+    <Authors>Ling</Authors>
+    <Description>Microsoft.Extensions.Logging integration for Ling.Interceptors monitoring.</Description>
+    <PackageTags>interceptors;monitoring;logging;ilogger;csharp</PackageTags>
+    <PackageProjectUrl>https://github.com/ling921/ling-interceptors</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ling921/ling-interceptors</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ling.Interceptors.Runtime\Ling.Interceptors.Runtime.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="README.zh-CN.md" Pack="true" PackagePath="" />
+    <None Include="..\..\assets\icon.png" Visible="false" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>
