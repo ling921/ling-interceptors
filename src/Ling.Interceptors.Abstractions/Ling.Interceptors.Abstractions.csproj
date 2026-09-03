@@ -3,11 +3,11 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Ling.Interceptors</RootNamespace>
-    <PackageId>Ling.Interceptors.Runtime</PackageId>
-    <Title>Ling.Interceptors.Runtime</Title>
+    <PackageId>Ling.Interceptors.Abstractions</PackageId>
+    <Title>Ling.Interceptors.Abstractions</Title>
     <Authors>Ling</Authors>
-    <Description>Runtime contracts and safe value formatting for Ling.Interceptors monitoring.</Description>
-    <PackageTags>interceptors;monitoring;logging;observability;runtime;csharp</PackageTags>
+    <Description>Zero-dependency public attributes and contracts for Ling.Interceptors.</Description>
+    <PackageTags>interceptors;attributes;abstractions;csharp</PackageTags>
     <PackageProjectUrl>https://github.com/ling921/ling-interceptors</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ling921/ling-interceptors</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -16,11 +16,6 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Ling.Interceptors.Abstractions\Ling.Interceptors.Abstractions.csproj" />
-    <PackageReference Include="System.Text.Json" Version="9.0.0" />
-  </ItemGroup>
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />

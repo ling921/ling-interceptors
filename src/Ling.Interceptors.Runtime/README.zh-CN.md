@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-`Ling.Interceptors` 方法监控的共享运行时契约。它包含公开特性、安全值格式化器、监控生命周期抽象，以及默认的空 sink。
+`Ling.Interceptors` 方法监控的共享运行时契约。它包含安全值格式化器、监控生命周期抽象，以及默认的空 sink。
 
 ```csharp
 using Ling.Interceptors;
@@ -17,4 +17,4 @@ public Task<Order> PlaceOrder(
 }
 ```
 
-在编译调用点的项目中安装 `Ling.Interceptors`。仅声明被监控 API 的程序集可单独引用本运行时包。
+调用受监控方法的项目应将本包与 `Ling.Interceptors` 一起安装。仅声明受监控 API 的程序集应改为引用 `Ling.Interceptors.Abstractions`。

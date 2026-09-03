@@ -19,6 +19,7 @@
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
     <Project Path="src/Ling.Interceptors/Ling.Interceptors.csproj" />
+    <Project Path="src/Ling.Interceptors.Abstractions/Ling.Interceptors.Abstractions.csproj" />
     <Project Path="src/Ling.Interceptors.Runtime/Ling.Interceptors.Runtime.csproj" />
     <Project Path="src/Ling.Interceptors.Logging/Ling.Interceptors.Logging.csproj" />
     <Project Path="src/Ling.Interceptors.Console/Ling.Interceptors.Console.csproj" />

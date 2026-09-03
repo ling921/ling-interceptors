@@ -20,7 +20,6 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <IncludeSymbols>false</IncludeSymbols>
-    <DevelopmentDependency>true</DevelopmentDependency>
     <NoWarn>$(NoWarn);RSEXPERIMENTAL002;RS2008;NU5128</NoWarn>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
@@ -31,13 +30,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Ling.Interceptors.Runtime\Ling.Interceptors.Runtime.csproj" TreatAsPackageReference="true" />
+    <ProjectReference Include="..\Ling.Interceptors.Abstractions\Ling.Interceptors.Abstractions.csproj" TreatAsPackageReference="true" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Package Content -->
   <ItemGroup>
     <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\Ling.Interceptors.Abstractions\bin\$(Configuration)\netstandard2.0\Ling.Interceptors.Abstractions.dll" Pack="true" PackagePath="lib/netstandard2.0" Visible="false" />
     <None Include="buildTransitive\Ling.Interceptors.props" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.props" />
     <None Include="buildTransitive\Ling.Interceptors.targets" Pack="true" PackagePath="buildTransitive/Ling.Interceptors.targets" />
     <None Include="README.md" Pack="true" PackagePath="" />

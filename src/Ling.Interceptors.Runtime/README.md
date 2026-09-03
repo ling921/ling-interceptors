@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Shared runtime contracts for `Ling.Interceptors` monitoring. It contains the public attributes, safe value formatter, monitor lifecycle abstractions, and a no-op default sink.
+Shared runtime contracts for `Ling.Interceptors` monitoring. It contains the safe value formatter, monitor lifecycle abstractions, and a no-op default sink.
 
 ```csharp
 using Ling.Interceptors;
@@ -17,4 +17,4 @@ public Task<Order> PlaceOrder(
 }
 ```
 
-Install `Ling.Interceptors` in projects that compile call sites. This runtime package is useful on its own for assemblies that only declare monitored APIs.
+Install this package alongside `Ling.Interceptors` in projects that invoke monitored methods. Assemblies that only declare monitored APIs need `Ling.Interceptors.Abstractions` instead.

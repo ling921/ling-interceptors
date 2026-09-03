@@ -11,8 +11,9 @@
 
 | 包 | 用途 |
 | --- | --- |
-| [`Ling.Interceptors`](src/Ling.Interceptors/README.zh-CN.md) | 分析器、源生成器、构建集成和拦截 API。 |
-| `Ling.Interceptors.Runtime` | 公共特性、运行时契约、值格式化和默认空 sink。 |
+| [`Ling.Interceptors`](src/Ling.Interceptors/README.zh-CN.md) | 分析器、源生成器、构建集成和方法替换 API。 |
+| [`Ling.Interceptors.Abstractions`](src/Ling.Interceptors.Abstractions/README.zh-CN.md) | 零依赖公开特性与 Scope；主包会自动引用。 |
+| `Ling.Interceptors.Runtime` | 监控运行时契约、值格式化和默认空 sink。 |
 | `Ling.Interceptors.Logging` | `Microsoft.Extensions.Logging` sink。 |
 | `Ling.Interceptors.Console` | 输出 JSON Lines 到标准错误的 sink。 |
 | `Ling.Interceptors.OpenTelemetry` | `ActivitySource` 与 `Meter` sink。 |
@@ -26,6 +27,12 @@ dotnet add package Ling.Interceptors
 包会自动将 `Ling.Interceptors.Generated` 加入 `InterceptorsNamespaces`，消费项目无需手写该属性。
 
 ## 方法监控
+
+每个调用受监控方法的 compilation 都需要额外安装 Runtime。它与 `Ling.Interceptors` 分包，因此仅使用方法替换的项目不会依赖 `System.Text.Json`。
+
+```shell
+dotnet add package Ling.Interceptors.Runtime
+```
 
 在目标方法上标记即可，generator 会在当前 compilation 中寻找调用点并自动生成 wrapper：
 
@@ -50,7 +57,7 @@ MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
 // 或：new OpenTelemetryMonitorSink()
 ```
 
-引用程序集内部已经编译好的调用点不会被修改。调用受监控方法的项目需要引用 `Ling.Interceptors` 以运行 generator；只声明受监控 API 的项目只需要 `Ling.Interceptors.Runtime`。
+引用程序集内部已经编译好的调用点不会被修改。调用受监控方法的项目需要同时引用 `Ling.Interceptors` 和 `Ling.Interceptors.Runtime`；若遗漏 Runtime，会收到 `LINGINT013` 诊断。只声明受监控 API 的项目可仅引用 `Ling.Interceptors.Abstractions`。
 
 ## 使用方式
 

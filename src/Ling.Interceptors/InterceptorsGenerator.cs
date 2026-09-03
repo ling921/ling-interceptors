@@ -64,7 +64,7 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
 
         if (validRules.Any(static r => (r.Scope & Compilation) != 0 && (r.Scope & GeneratedCode) != 0)
             || validMonitors.Any(static r => (r.Scope & Compilation) != 0 && (r.Scope & GeneratedCode) != 0))
-            context.AddSource("LingInterceptors.TwoPhaseRequired.g.cs", SourceText.From("// Ling.Interceptors two-phase build marker\n", Encoding.UTF8));
+            context.AddSource("LingInterceptors.TwoPhaseRequired.g.cs", SourceText.From("// Ling.Interceptors two-phase build marker\r\n", Encoding.UTF8));
 
         var selected = new Dictionary<Rule, List<Invocation>>(RuleComparer.Instance);
         var selectedMonitors = new Dictionary<MonitorRule, List<Invocation>>(MonitorRuleComparer.Instance);
@@ -119,6 +119,9 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
 
         foreach (var pair in selected)
             context.AddSource("Interceptor_" + StableHint(pair.Key.Handler) + ".g.cs", SourceText.From(GenerateAdapter(compilation, pair.Key, pair.Value), Encoding.UTF8));
+
+        if (selectedMonitors.Count > 0 && compilation.GetTypeByMetadataName("Ling.Interceptors.MonitorRuntime") is null)
+            return;
 
         foreach (var pair in selectedMonitors)
             context.AddSource("Monitor_" + StableHint(pair.Key.Target) + ".g.cs", SourceText.From(GenerateMonitorAdapter(compilation, pair.Key, pair.Value), Encoding.UTF8));
@@ -488,7 +491,7 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("    }");
         sb.AppendLine("}");
-        return sb.ToString();
+        return NormalizeGeneratedLineEndings(sb.ToString());
     }
 
     private static string GenerateMonitorAdapter(Compilation compilation, MonitorRule rule, List<Invocation> locations)
@@ -611,8 +614,11 @@ public sealed class InterceptorsGenerator : IIncrementalGenerator
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine("}");
-        return sb.ToString();
+        return NormalizeGeneratedLineEndings(sb.ToString());
     }
+
+    private static string NormalizeGeneratedLineEndings(string value)
+        => value.Replace("\r\n", "\n").Replace("\n", "\r\n");
 
     private static void AppendCompletion(StringBuilder sb, MonitorRule rule, string category, string methodName, string returnValue)
     {
