@@ -5,6 +5,9 @@
 *.props text eol=crlf
 *.targets text eol=crlf
 *.sln text eol=crlf
+*.slnx text eol=crlf
+*.config text eol=crlf
+*.xml text eol=crlf
 *.md text eol=crlf
 *.yml text eol=lf
 *.yaml text eol=lf

@@ -2,7 +2,7 @@
 
 [Project documentation](https://github.com/ling921/ling-interceptors#readme) | [简体中文](https://github.com/ling921/ling-interceptors/blob/master/src/Ling.Interceptors/README.zh-CN.md)
 
-`Ling.Interceptors` provides compile-time C# method-call interception through a Roslyn analyzer and incremental source generator. It requires .NET SDK 9.0.200 or later.
+`Ling.Interceptors` provides the public interception and monitoring API, plus bundled Roslyn analyzer and incremental source generator. It requires .NET SDK 9.0.200 or later.
 
 ## Installation
 
@@ -11,6 +11,29 @@ dotnet add package Ling.Interceptors
 ```
 
 The package automatically configures `Ling.Interceptors.Generated` in `InterceptorsNamespaces`.
+
+## Monitor calls
+
+```csharp
+[Monitor(CaptureParameters = true, CaptureReturnValue = true)]
+[return: SensitiveData]
+public async Task<Order> PlaceOrder(
+    int customerId,
+    [SensitiveData] string product)
+{
+    // implementation
+}
+```
+
+The generator discovers calls in the current compilation and emits a wrapper that records the selected values, exceptions, and elapsed time. Configure a sink explicitly:
+
+```csharp
+MonitorRuntime.Sink = new LoggerMonitorSink(loggerFactory);
+```
+
+The default formatter preserves scalar values, masks sensitive values, and emits a declared-type summary for other objects without calling `ToString()` or serializing them. Replace `MonitorRuntime.Formatter` for custom structured output; its `MonitorValueContext` identifies sensitive values.
+
+Both an assembly that declares monitored APIs and a project that contains monitored call sites need this package.
 
 ## Define a replacement
 
@@ -42,7 +65,7 @@ service.Send("two");                      // Compilation rule
 
 ## Diagnostics and limits
 
-The included analyzer reports invalid IDs/scopes, malformed `nameof` expressions, inaccessible or incompatible replacements, ambiguous targets, invalid markers, and conflicting compilation rules. Constructors, properties, operators, delegate invocation, and method-group conversions are unsupported.
+The included analyzer reports invalid IDs/scopes, malformed `nameof` expressions, inaccessible or incompatible replacements, ambiguous targets, invalid markers, conflicting compilation rules, and Monitor/interceptor conflicts. Constructors, properties, operators, delegate invocation, and method-group conversions are unsupported. Monitor wrappers support ordinary returns, `Task`, `Task<T>`, `ValueTask`, and `ValueTask<T>`.
 
 ## License
 

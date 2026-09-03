@@ -16,7 +16,7 @@
     <ItemGroup>
       <_LingInterceptorsMarkers Include="$(LingInterceptorsGeneratedRoot)\**\LingInterceptors.TwoPhaseRequired.g.cs" />
       <_LingInterceptorsPass1Sources Include="$(LingInterceptorsGeneratedRoot)\**\*.cs"
-          Exclude="$(LingInterceptorsGeneratedRoot)\Ling.Interceptors\**\*" />
+          Exclude="$(LingInterceptorsGeneratedRoot)\Ling.Interceptors\**\*;$(LingInterceptorsGeneratedRoot)\Ling.Interceptors.Generators\**\*" />
     </ItemGroup>
     <Error Code="LINGINTB001" Condition="'@(_LingInterceptorsMarkers)' != '' and '@(_LingInterceptorsPass1Sources)' == ''"
            Text="Ling.Interceptors requested generated-code interception, but no external generator output could be materialized." />
@@ -29,7 +29,7 @@
           Condition="'$(LingInterceptorsBuildPhase)' == 'final'">
     <ItemGroup>
       <Compile Include="$(LingInterceptorsGeneratedRoot)\**\*.cs"
-               Exclude="$(LingInterceptorsGeneratedRoot)\Ling.Interceptors\**\*" />
+               Exclude="$(LingInterceptorsGeneratedRoot)\Ling.Interceptors\**\*;$(LingInterceptorsGeneratedRoot)\Ling.Interceptors.Generators\**\*" />
       <!-- Phase one already ran third-party analyzers/generators. Keep only this package for final interception. -->
       <Analyzer Remove="@(Analyzer)" />
       <Analyzer Include="$(LingInterceptorsAnalyzerPath)" />

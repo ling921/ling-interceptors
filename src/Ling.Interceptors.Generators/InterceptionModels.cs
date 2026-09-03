@@ -48,3 +48,35 @@ internal sealed class Invocation
     public bool IsGenerated { get; }
     public IMethodSymbol? ContainingMethod { get; }
 }
+
+internal sealed class MonitorRule
+{
+    public MonitorRule(
+        IMethodSymbol target,
+        int scope,
+        bool captureParameters,
+        bool captureReturnValue,
+        bool captureExceptions,
+        bool recordTiming,
+        bool createTrace,
+        Location diagnosticLocation)
+    {
+        Target = target;
+        Scope = scope;
+        CaptureParameters = captureParameters;
+        CaptureReturnValue = captureReturnValue;
+        CaptureExceptions = captureExceptions;
+        RecordTiming = recordTiming;
+        CreateTrace = createTrace;
+        DiagnosticLocation = diagnosticLocation;
+    }
+
+    public IMethodSymbol Target { get; }
+    public int Scope { get; }
+    public bool CaptureParameters { get; }
+    public bool CaptureReturnValue { get; }
+    public bool CaptureExceptions { get; }
+    public bool RecordTiming { get; }
+    public bool CreateTrace { get; }
+    public Location DiagnosticLocation { get; }
+}

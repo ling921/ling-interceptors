@@ -19,10 +19,12 @@ public sealed class InterceptorsAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(start =>
         {
             var rules = new ConcurrentBag<Rule>();
+            var monitors = new ConcurrentBag<MonitorRule>();
             var calls = new ConcurrentBag<Invocation>();
             start.RegisterSyntaxNodeAction(analysis => AddRule(analysis, rules), SyntaxKind.MethodDeclaration);
+            start.RegisterSyntaxNodeAction(analysis => AddMonitor(analysis, monitors), SyntaxKind.MethodDeclaration);
             start.RegisterSyntaxNodeAction(analysis => AddCall(analysis, calls), SyntaxKind.InvocationExpression);
-            start.RegisterCompilationEndAction(analysis => Analyze(rules.ToImmutableArray(), calls.ToImmutableArray(), analysis.ReportDiagnostic));
+            start.RegisterCompilationEndAction(analysis => Analyze(rules.ToImmutableArray(), monitors.ToImmutableArray(), calls.ToImmutableArray(), analysis.ReportDiagnostic));
         });
     }
 
@@ -40,9 +42,23 @@ public sealed class InterceptorsAnalyzer : DiagnosticAnalyzer
             calls.Add(call);
     }
 
-    private static void Analyze(ImmutableArray<Rule> rules, ImmutableArray<Invocation> calls, Action<Diagnostic> report)
+    private static void AddMonitor(SyntaxNodeAnalysisContext analysis, ConcurrentBag<MonitorRule> monitors)
+    {
+        var monitor = InterceptorsGenerator.TryCreateMonitorRule(analysis.SemanticModel, (MethodDeclarationSyntax)analysis.Node, analysis.CancellationToken);
+        if (monitor is not null)
+            monitors.Add(monitor);
+    }
+
+    private static void Analyze(ImmutableArray<Rule> rules, ImmutableArray<MonitorRule> monitors, ImmutableArray<Invocation> calls, Action<Diagnostic> report)
     {
         var valid = InterceptorsGenerator.ValidateRules(rules, report);
+        foreach (var monitor in monitors)
+        {
+            if (!InterceptorsGenerator.IsValidMonitorScope(monitor.Scope))
+                report(Diagnostic.Create(Diagnostics.InvalidMonitorScope, monitor.DiagnosticLocation, monitor.Target.ToDisplayString()));
+            if (monitor.Target.ReturnsByRef || monitor.Target.ReturnsByRefReadonly)
+                report(Diagnostic.Create(Diagnostics.UnsupportedMonitorTarget, monitor.DiagnosticLocation, monitor.Target.ToDisplayString()));
+        }
         foreach (var call in calls)
         {
             if (valid.Any(rule => SymbolEqualityComparer.Default.Equals(rule.Handler, call.ContainingMethod)))
@@ -65,6 +81,12 @@ public sealed class InterceptorsAnalyzer : DiagnosticAnalyzer
                 (!call.IsGenerated || (rule.Scope & InterceptorsGenerator.GeneratedCode) != 0)).ToArray();
             if (matching.Length > 1)
                 report(Diagnostic.Create(Diagnostics.ConflictingCompilationRules, call.DiagnosticLocation, call.Target.ToDisplayString()));
+
+            var monitor = InterceptorsGenerator.FindMonitorRule(call.Target, call.DiagnosticLocation, monitors);
+            if (monitor is not null && call.IsGenerated && (monitor.Scope & InterceptorsGenerator.GeneratedCode) == 0)
+                monitor = null;
+            if (matching.Length == 1 && monitor is not null)
+                report(Diagnostic.Create(Diagnostics.ConflictingMonitorRule, call.DiagnosticLocation, call.Target.ToDisplayString()));
         }
     }
 }
