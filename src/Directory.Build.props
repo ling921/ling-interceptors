@@ -7,10 +7,8 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
     <VersionPrefix>1.1.0</VersionPrefix>
-    <VersionSuffix>preview.4</VersionSuffix>
     <AssemblyVersion>$(VersionPrefix)</AssemblyVersion>
     <FileVersion>$(VersionPrefix).0</FileVersion>
-    <InformationalVersion>$(VersionPrefix)-$(VersionSuffix)</InformationalVersion>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
