@@ -41,7 +41,7 @@ jobs:
       - name: Build
         run: dotnet build Ling.Interceptors.slnx --configuration Release --no-restore
 
-      - name: Test .NET 9 and .NET 10
+      - name: Test
         run: dotnet test Ling.Interceptors.slnx --configuration Release --no-build --verbosity normal
 
       - name: Pack

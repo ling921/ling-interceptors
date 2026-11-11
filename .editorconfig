@@ -11,6 +11,9 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 
 # Shell scripts
+[*.{yml,yaml}]
+end_of_line = lf
+
 [*.sh]
 end_of_line = lf
 

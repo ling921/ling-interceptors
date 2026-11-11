@@ -6,7 +6,7 @@ namespace Ling.Interceptors;
 public interface IMonitorValueFormatter
 {
     /// <summary>
-/// Formats a value into a safe representation. The context identifies sensitive values.
+    /// Formats a value into a safe representation. The context identifies sensitive values.
     /// </summary>
     MonitorValue Format(object? value, in MonitorValueContext context);
 }
