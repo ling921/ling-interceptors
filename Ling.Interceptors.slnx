@@ -31,5 +31,6 @@
     <Project Path="tests/Ling.Interceptors.Logging.Tests/Ling.Interceptors.Logging.Tests.csproj" />
     <Project Path="tests/Ling.Interceptors.OpenTelemetry.Tests/Ling.Interceptors.OpenTelemetry.Tests.csproj" />
     <Project Path="tests/Ling.Interceptors.Tests/Ling.Interceptors.Tests.csproj" />
+    <Project Path="tests/Ling.Interceptors.NativeAotSmoke/Ling.Interceptors.NativeAotSmoke.csproj" />
   </Folder>
 </Solution>
