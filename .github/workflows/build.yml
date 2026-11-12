@@ -44,6 +44,11 @@ jobs:
       - name: Test
         run: dotnet test Ling.Interceptors.slnx --configuration Release --no-build --verbosity normal
 
+      - name: Verify Native AOT publish and execution
+        run: |
+          dotnet publish tests/Ling.Interceptors.NativeAotSmoke/Ling.Interceptors.NativeAotSmoke.csproj --configuration Release --runtime linux-x64 --self-contained true -warnaserror
+          ./tests/Ling.Interceptors.NativeAotSmoke/bin/Release/net11.0/linux-x64/publish/Ling.Interceptors.NativeAotSmoke
+
       - name: Pack
         run: |
           mkdir -p artifacts/packages
